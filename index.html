@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bingo Fiesta V8</title>
+    <title>Bingo Fiesta V9</title>
     
     <!-- LIBRERÍAS -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -14,12 +14,9 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <style>
-        /* Bloquear scroll general para que la app se comporte como nativa */
         html, body, #root { height: 100%; overflow: hidden; margin: 0; padding: 0; background-color: #0f172a; color: white; touch-action: manipulation; }
         .win-pulse { animation: winPulse 2s infinite; }
         @keyframes winPulse { 0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(234, 179, 8, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
-        
-        /* Scrollbar fina y elegante */
         .scroller { overflow-y: auto; scrollbar-width: thin; scrollbar-color: #475569 #0f172a; }
         .scroller::-webkit-scrollbar { width: 6px; }
         .scroller::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
@@ -30,14 +27,13 @@
 
     <script>
         window.onerror = function(message) {
-            document.body.innerHTML = '<div style="padding:20px;text-align:center;color:red;font-family:sans-serif"><h2>Error Crítico</h2><p>'+message+'</p><button onclick="localStorage.clear();location.reload()" style="background:white;padding:10px;border-radius:8px">REINICIAR</button></div>';
+            document.body.innerHTML = '<div style="padding:20px;text-align:center;color:red;font-family:sans-serif"><h2>Error</h2><p>'+message+'</p><button onclick="localStorage.clear();location.reload()" style="background:white;padding:10px;border-radius:8px">REINICIAR</button></div>';
         };
     </script>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- ICONOS ---
         const Icon = ({ name, size=24 }) => {
             const icons = {
                 arrowLeft: <path d="M19 12H5M12 19l-7-7 7-7" />,
@@ -55,7 +51,6 @@
             return <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icons[name] || <circle cx="12" cy="12" r="10"/>}</svg>;
         };
 
-        // --- GENERADOR ---
         const generateCard = () => {
             const ranges = [[1,9], [10,19], [20,29], [30,39], [40,49], [50,59], [60,69], [70,79], [80,90]];
             let grid, attempts = 0;
@@ -70,7 +65,6 @@
             return grid;
         };
 
-        // --- MODO JUGADOR ---
         const Player = ({ onBack }) => {
             const [grid, setGrid] = useState(() => { try { return JSON.parse(localStorage.getItem('b_g')) || generateCard(); } catch { return generateCard(); } });
             const [marks, setMarks] = useState(() => { try { return new Set(JSON.parse(localStorage.getItem('b_m'))); } catch { return new Set(); } });
@@ -88,6 +82,16 @@
             };
 
             const toggle = (n) => { if(!n) return; const nm = new Set(marks); if(nm.has(n)) nm.delete(n); else nm.add(n); setMarks(nm); };
+
+            // FUNCIÓN NUEVA: Reseteo completo de partida
+            const startNewGame = () => {
+                if(confirm("¿Empezar partida nueva? (Se borrará todo)")) {
+                    setGrid(generateCard()); // 1. Nuevo Cartón
+                    setMarks(new Set());     // 2. Borrar marcas
+                    setTarget('line');       // 3. Resetear objetivo a LÍNEA
+                    setAlert(null);          // 4. Quitar alertas
+                }
+            };
 
             return (
                 <div className="flex flex-col h-full bg-slate-900">
@@ -113,13 +117,16 @@
                             </div>
                         </div>
                         {target==='line' && <button onClick={()=>{if(confirm("¿Cambiar a Bingo?"))setTarget('bingo')}} className="mt-8 w-full max-w-sm py-4 bg-slate-800 border border-pink-500 rounded-xl flex justify-center gap-2 text-pink-400 font-bold shrink-0">Ya hay Línea → Ir a Bingo</button>}
-                        <div className="mt-8 flex gap-4 w-full max-w-sm mb-8 shrink-0"><button onClick={()=>{if(confirm("¿Borrar?"))setMarks(new Set())}} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="trash"/> Limpiar</button><button onClick={()=>{if(confirm("¿Nuevo?"))setGrid(generateCard())}} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="refresh"/> Nuevo</button></div>
+                        
+                        <div className="mt-8 flex gap-4 w-full max-w-sm mb-8 shrink-0">
+                            <button onClick={()=>{if(confirm("¿Solo borrar marcas? (Mismo cartón)"))setMarks(new Set())}} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="trash"/> Limpiar</button>
+                            <button onClick={startNewGame} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="refresh"/> Nuevo</button>
+                        </div>
                     </div>
                 </div>
             );
         };
 
-        // --- MODO FÁBRICA ---
         const Factory = ({ onBack }) => {
             const [grid, setGrid] = useState(generateCard());
             const [c, setC] = useState(1);
@@ -146,7 +153,6 @@
             );
         };
 
-        // --- MODO BOMBO (CALLER) ---
         const Caller = ({ onBack }) => {
             const [history, setHistory] = useState([]);
             const [current, setCurrent] = useState(null);
@@ -190,21 +196,15 @@
 
             return (
                 <div className="flex flex-col md:flex-row h-full bg-slate-900 overflow-hidden">
-                    {/* COLUMNA IZQUIERDA: BOLA */}
                     <div className="md:w-1/3 h-[40%] md:h-full flex flex-col items-center justify-center p-2 relative border-b md:border-b-0 md:border-r border-slate-700 shrink-0">
                         <div className="absolute top-2 left-2 md:hidden z-20"><button onClick={()=>{setAuto(false);onBack()}} className="p-2 bg-slate-800 rounded-full"><Icon name="arrowLeft"/></button></div>
                         <div className="absolute top-2 right-2 md:hidden bg-slate-800 px-3 py-1 rounded-full text-blue-300 font-bold z-20">{history.length}/90</div>
-
-                        {/* La bola usa 'vmin' para escalar con la dimensión más pequeña, evitando desbordes */}
                         <div onClick={()=>current && playSound(`${current}`)} className="w-[30vh] h-[30vh] md:w-[35vw] md:h-[35vw] max-w-[300px] max-h-[300px] md:max-w-[400px] md:max-h-[400px] bg-slate-800 rounded-full border-[8px] md:border-[16px] border-slate-700 flex items-center justify-center shadow-2xl cursor-pointer active:scale-95 transition-transform shrink-0">
                             <span className="text-[6rem] md:text-[10rem] lg:text-[12rem] font-black leading-none">{current || "--"}</span>
                         </div>
                         <div className="mt-2 text-slate-500 text-sm md:text-xl font-bold shrink-0">ÚLTIMO NÚMERO</div>
                     </div>
-
-                    {/* COLUMNA DERECHA: PANEL & CONTROLES */}
                     <div className="md:w-2/3 h-[60%] md:h-full flex flex-col bg-slate-950 p-2 md:p-4 min-h-0">
-                        {/* Header PC (Oculto en móvil) */}
                         <div className="hidden md:flex justify-between items-center mb-4 shrink-0">
                             <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">PANEL DE CONTROL</h2>
                             <div className="flex gap-4">
@@ -212,31 +212,22 @@
                                 <button onClick={()=>{if(confirm("Reiniciar?")){setHistory([]);setCurrent(null);setAuto(false)}}} className="px-4 py-2 bg-red-900/50 text-red-400 rounded-lg hover:bg-red-900 font-bold">REINICIAR</button>
                             </div>
                         </div>
-
-                        {/* GRID SCROLLABLE (min-h-0 es la clave para que flexbox scrollee) */}
                         <div className="flex-1 min-h-0 bg-slate-900 rounded-2xl p-2 border border-slate-800 shadow-inner overflow-y-auto scroller">
                             <div className="grid grid-cols-10 gap-1 content-start">
                                 {Array.from({length:90},(_,i)=>i+1).map(n => (
-                                    <div key={n} className={`aspect-square md:aspect-auto md:h-12 flex items-center justify-center rounded font-bold text-xs sm:text-sm md:text-lg transition-all duration-300 ${history.includes(n)?'bg-green-500 text-white shadow-[0_0_10px_rgba(34,197,94,0.5)]':'bg-slate-800 text-slate-600'}`}>
-                                        {n}
-                                    </div>
+                                    <div key={n} className={`aspect-square md:aspect-auto md:h-12 flex items-center justify-center rounded font-bold text-xs sm:text-sm md:text-lg transition-all duration-300 ${history.includes(n)?'bg-green-500 text-white shadow-[0_0_10px_rgba(34,197,94,0.5)]':'bg-slate-800 text-slate-600'}`}>{n}</div>
                                 ))}
                             </div>
                         </div>
-
-                        {/* CONTROLES FIXED BOTTOM (shrink-0 evita que se aplasten) */}
                         <div className="mt-2 flex gap-2 h-14 md:h-20 shrink-0">
                             <div className="flex-1 bg-slate-900 rounded-2xl flex items-center justify-center gap-2 md:gap-6 border border-slate-800 p-1">
                                 <button onClick={()=>setAuto(!auto)} className={`flex-1 md:flex-none px-2 md:px-6 py-2 md:py-3 rounded-xl font-black text-xs md:text-xl flex items-center justify-center gap-2 transition-all h-full ${auto?'bg-amber-500 text-black shadow-[0_0_20px_rgba(245,158,11,0.4)]':'bg-slate-700 hover:bg-slate-600'}`}>
                                     {auto ? <><Icon name="pause" size={16}/> PAUSA</> : <><Icon name="play" size={16}/> AUTO</>}
                                 </button>
-                                <button onClick={draw} disabled={auto} className="flex-[2] md:flex-none px-4 md:px-6 py-2 md:py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-black text-sm md:text-xl shadow-lg active:translate-y-1 h-full">
-                                    SACAR BOLA
-                                </button>
+                                <button onClick={draw} disabled={auto} className="flex-[2] md:flex-none px-4 md:px-6 py-2 md:py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-black text-sm md:text-xl shadow-lg active:translate-y-1 h-full">SACAR BOLA</button>
                             </div>
                             <button onClick={()=>{setAuto(false);setChecking(true)}} className="w-16 md:w-40 bg-pink-600 hover:bg-pink-500 rounded-2xl font-black text-[10px] md:text-lg flex flex-col items-center justify-center shadow-lg h-full">
-                                <span className="md:hidden"><Icon name="ticket" size={20}/></span>
-                                <span className="hidden md:inline"><Icon name="ticket"/> COMPROBAR</span>
+                                <span className="md:hidden"><Icon name="ticket" size={20}/></span><span className="hidden md:inline"><Icon name="ticket"/> COMPROBAR</span>
                             </button>
                         </div>
                     </div>
@@ -244,7 +235,6 @@
             );
         };
 
-        // --- MENÚ ---
         const Menu = ({ setMode }) => (
             <div className="flex flex-col items-center justify-center h-full bg-gradient-to-b from-blue-900 to-slate-900 p-4 text-center scroller">
                 <h1 className="text-7xl sm:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-indigo-500 mb-8 drop-shadow-2xl shrink-0">BINGO</h1>
@@ -260,14 +250,14 @@
                         <p className="text-slate-400">Bombo y Pantalla</p>
                     </button>
                 </div>
-                <div className="hidden sm:block mt-12 text-slate-500 text-sm shrink-0">Bingo Fiesta V8.0</div>
+                <div className="hidden sm:block mt-12 text-slate-500 text-sm shrink-0">Bingo Fiesta V9.0</div>
                 <button onClick={()=>{setMode('factory')}} className="mt-8 text-xs text-slate-600 hover:text-white flex items-center justify-center gap-2 shrink-0"><Icon name="layers"/> Imprimir Cartones</button>
             </div>
         );
 
         const App = () => {
             const [mode, setMode] = useState('menu');
-            return mode === 'menu' ? <Menu setMode={setMode}/> :
+            return mode === 'menu' ? <Menu setMode={setMode}/> : 
                    mode === 'player' ? <Player onBack={()=>setMode('menu')}/> :
                    mode === 'factory' ? <Factory onBack={()=>setMode('menu')}/> :
                    <Caller onBack={()=>setMode('menu')}/>;
