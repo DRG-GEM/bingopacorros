@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bingo Fiesta V9</title>
+    <title>Bingo Fiesta V10</title>
     
     <!-- LIBRERÍAS -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -46,11 +46,14 @@
                 ticket: <path d="M3 7v2a3 3 0 0 1 3 3 3 3 0 0 1-3 3v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2a3 3 0 0 1-3-3 3 3 0 0 1 3-3V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z" />,
                 tv: <><rect x="2" y="7" width="20" height="15" rx="2" ry="2" /><polyline points="17 2 12 7 7 2" /></>,
                 finger: <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />,
-                layers: <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                layers: <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />,
+                plus: <path d="M12 5v14M5 12h14" />,
+                x: <path d="M18 6L6 18M6 6l12 12" />
             };
             return <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icons[name] || <circle cx="12" cy="12" r="10"/>}</svg>;
         };
 
+        // --- GENERADOR ---
         const generateCard = () => {
             const ranges = [[1,9], [10,19], [20,29], [30,39], [40,49], [50,59], [60,69], [70,79], [80,90]];
             let grid, attempts = 0;
@@ -65,68 +68,144 @@
             return grid;
         };
 
+        // --- MODO JUGADOR MULTI-CARTÓN ---
         const Player = ({ onBack }) => {
-            const [grid, setGrid] = useState(() => { try { return JSON.parse(localStorage.getItem('b_g')) || generateCard(); } catch { return generateCard(); } });
-            const [marks, setMarks] = useState(() => { try { return new Set(JSON.parse(localStorage.getItem('b_m'))); } catch { return new Set(); } });
+            // Estado principal: Array de objetos { id, grid, marks (Set convertido a Array para storage) }
+            const [cards, setCards] = useState(() => {
+                try {
+                    const saved = localStorage.getItem('bingo_v10_cards');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        // Recuperar Sets desde Arrays
+                        return parsed.map(c => ({ ...c, marks: new Set(c.marks) }));
+                    }
+                    return [{ id: 1, grid: generateCard(), marks: new Set() }];
+                } catch { return [{ id: 1, grid: generateCard(), marks: new Set() }]; }
+            });
+
             const [target, setTarget] = useState('line'); 
-            const [alert, setAlert] = useState(null);
+            const [alert, setAlert] = useState(null); // Texto de alerta
 
-            useEffect(() => { localStorage.setItem('b_g', JSON.stringify(grid)); }, [grid]);
-            useEffect(() => { localStorage.setItem('b_m', JSON.stringify(Array.from(marks))); check(); }, [marks, target]);
+            // Guardar en Storage (Convertir Sets a Arrays)
+            useEffect(() => {
+                const toSave = cards.map(c => ({ ...c, marks: Array.from(c.marks) }));
+                localStorage.setItem('bingo_v10_cards', JSON.stringify(toSave));
+                checkAllCards();
+            }, [cards, target]);
 
-            const check = () => {
-                let rows = 0; grid.forEach(row => { if(row.filter(n=>n).every(n=>marks.has(n))) rows++; });
-                const total = Array.from(marks).filter(m => grid.some(r => r.includes(m))).length;
-                if (total === 15 && alert !== 'BINGO') { setAlert('BINGO'); confetti({particleCount:300,spread:70}); }
-                else if (target === 'line' && rows > 0 && total < 15 && alert !== 'LINEA') { setAlert('LINEA'); confetti({particleCount:100,spread:70}); }
+            // Comprobar victorias en TODOS los cartones
+            const checkAllCards = () => {
+                let highestWin = null;
+                let winningCardId = null;
+
+                cards.forEach(card => {
+                    let rows = 0;
+                    card.grid.forEach(row => { if(row.filter(n=>n).every(n=>card.marks.has(n))) rows++; });
+                    const total = Array.from(card.marks).filter(m => card.grid.some(r => r.includes(m))).length;
+
+                    if (total === 15) {
+                        highestWin = 'BINGO';
+                        winningCardId = card.id;
+                    } else if (target === 'line' && rows > 0 && total < 15 && highestWin !== 'BINGO') {
+                        highestWin = 'LÍNEA';
+                        winningCardId = card.id;
+                    }
+                });
+
+                if (highestWin && (alert === null || !alert.includes(highestWin))) {
+                    setAlert(`${highestWin} EN CARTÓN ${winningCardId}`);
+                    confetti({ particleCount: highestWin==='BINGO'?300:100, spread: 70 });
+                } else if (!highestWin) {
+                    setAlert(null);
+                }
             };
 
-            const toggle = (n) => { if(!n) return; const nm = new Set(marks); if(nm.has(n)) nm.delete(n); else nm.add(n); setMarks(nm); };
+            const toggleMark = (cardId, num) => {
+                if(!num) return;
+                setCards(prevCards => prevCards.map(c => {
+                    if (c.id === cardId) {
+                        const newMarks = new Set(c.marks);
+                        if (newMarks.has(num)) newMarks.delete(num); else newMarks.add(num);
+                        return { ...c, marks: newMarks };
+                    }
+                    return c;
+                }));
+            };
 
-            // FUNCIÓN NUEVA: Reseteo completo de partida
+            const addCard = () => {
+                if (cards.length >= 4) return alert("Máximo 4 cartones");
+                setCards([...cards, { id: cards.length + 1, grid: generateCard(), marks: new Set() }]);
+            };
+
+            const removeCard = (id) => {
+                if (confirm("¿Eliminar este cartón?")) {
+                    setCards(prev => prev.filter(c => c.id !== id));
+                }
+            };
+
             const startNewGame = () => {
-                if(confirm("¿Empezar partida nueva? (Se borrará todo)")) {
-                    setGrid(generateCard()); // 1. Nuevo Cartón
-                    setMarks(new Set());     // 2. Borrar marcas
-                    setTarget('line');       // 3. Resetear objetivo a LÍNEA
-                    setAlert(null);          // 4. Quitar alertas
+                if(confirm("¿Empezar partida nueva? (Se resetearán todos tus cartones)")) {
+                    // Regenerar grids para los cartones existentes
+                    setCards(prev => prev.map(c => ({ ...c, grid: generateCard(), marks: new Set() })));
+                    setTarget('line');
+                    setAlert(null);
+                }
+            };
+
+            const clearMarks = () => {
+                if(confirm("¿Borrar solo las fichas?")) {
+                    setCards(prev => prev.map(c => ({ ...c, marks: new Set() })));
                 }
             };
 
             return (
                 <div className="flex flex-col h-full bg-slate-900">
-                    <div className="shrink-0 bg-slate-800 shadow-xl p-3 flex justify-between items-center z-10">
+                    <div className="shrink-0 bg-slate-800 shadow-xl p-2 flex justify-between items-center z-10">
                         <button onClick={onBack} className="p-2 bg-slate-700 rounded-full"><Icon name="arrowLeft"/></button>
-                        <div className="text-center"><p className="text-xs text-slate-400 font-bold">OBJETIVO</p><p className={`text-xl font-black ${target==='line'?'text-green-400':'text-pink-500'}`}>{target==='line'?"LÍNEA":"BINGO"}</p></div>
-                        <div className="w-10"></div>
-                    </div>
-                    {alert && <div className={`shrink-0 w-full py-2 text-center font-black animate-pulse ${alert==='BINGO'?'bg-yellow-500 text-black':'bg-green-600 text-white'}`}>¡¡ {alert} !!</div>}
-                    <div className="flex-1 scroller p-4 flex flex-col items-center">
-                        <div className={`w-full max-w-3xl bg-[#fff9e6] border-4 border-amber-800 rounded-lg p-2 shadow-2xl relative select-none transition-transform ${alert==='BINGO'?'scale-105 shadow-yellow-500/50':''}`}>
-                            <div className="flex justify-between items-end border-b-2 border-amber-900/20 pb-2 mb-2"><h1 className="text-3xl sm:text-4xl font-black text-amber-900">BINGO</h1><span className="text-xs font-bold text-amber-900/50">TOCA PARA TACHAR</span></div>
-                            <div className="grid grid-rows-3 gap-0 border-2 border-amber-900 bg-amber-50">
-                                {grid.map((row, i) => (
-                                    <div key={i} className={`grid grid-cols-9 divide-x-2 divide-amber-900 h-16 sm:h-24 md:h-28 ${i<2?'border-b-2 border-amber-900':''} ${row.filter(n=>n).every(n=>marks.has(n))?'bg-green-200':''}`}>
-                                        {row.map((n, j) => (
-                                            <div key={j} onClick={()=>toggle(n)} className="relative flex items-center justify-center cursor-pointer active:bg-amber-200">
-                                                {n && <><span className={`text-xl sm:text-4xl md:text-5xl font-bold z-10 ${marks.has(n)?'text-amber-900/30':'text-slate-900'}`}>{n}</span>{marks.has(n)&&<div className="absolute w-8 h-8 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-red-600/70 border-2 border-red-800 pointer-events-none"></div>}</>}
-                                            </div>
-                                        ))}
-                                    </div>
-                                ))}
-                            </div>
+                        <div className="text-center">
+                            <p className="text-[10px] text-slate-400 font-bold">OBJETIVO</p>
+                            <p className={`text-lg font-black ${target==='line'?'text-green-400':'text-pink-500'}`}>{target==='line'?"LÍNEA":"BINGO"}</p>
                         </div>
-                        {target==='line' && <button onClick={()=>{if(confirm("¿Cambiar a Bingo?"))setTarget('bingo')}} className="mt-8 w-full max-w-sm py-4 bg-slate-800 border border-pink-500 rounded-xl flex justify-center gap-2 text-pink-400 font-bold shrink-0">Ya hay Línea → Ir a Bingo</button>}
+                        <button onClick={addCard} className="p-2 bg-blue-600 rounded-full text-white font-bold flex items-center gap-1 shadow-lg active:scale-90 transition-transform" disabled={cards.length>=4}>
+                            <Icon name="plus"/> <span className="text-xs mr-1">CARTÓN</span>
+                        </button>
+                    </div>
+                    
+                    {alert && <div className={`shrink-0 w-full py-2 text-center font-black animate-pulse ${alert.includes('BINGO')?'bg-yellow-500 text-black':'bg-green-600 text-white'}`}>¡¡ {alert} !!</div>}
+                    
+                    <div className="flex-1 scroller p-2 flex flex-col items-center gap-4 pb-20">
+                        {cards.map(card => (
+                            <div key={card.id} className={`w-full max-w-3xl bg-[#fff9e6] border-4 border-amber-800 rounded-lg p-1 shadow-2xl relative select-none transition-transform ${alert && alert.includes(card.id) ? 'scale-105 shadow-yellow-500/50' : ''}`}>
+                                <div className="flex justify-between items-end border-b-2 border-amber-900/20 pb-1 mb-1 px-2">
+                                    <h1 className="text-xl font-black text-amber-900">CARTÓN {card.id}</h1>
+                                    {cards.length > 1 && <button onClick={()=>removeCard(card.id)} className="text-red-400 p-1"><Icon name="x" size={16}/></button>}
+                                </div>
+                                <div className="grid grid-rows-3 gap-0 border-2 border-amber-900 bg-amber-50">
+                                    {card.grid.map((row, i) => (
+                                        <div key={i} className={`grid grid-cols-9 divide-x-2 divide-amber-900 h-12 sm:h-16 ${i<2?'border-b-2 border-amber-900':''} ${row.filter(n=>n).every(n=>card.marks.has(n))?'bg-green-200':''}`}>
+                                            {row.map((n, j) => (
+                                                <div key={j} onClick={()=>toggleMark(card.id, n)} className="relative flex items-center justify-center cursor-pointer active:bg-amber-200">
+                                                    {n && <><span className={`text-lg sm:text-2xl font-bold z-10 ${card.marks.has(n)?'text-amber-900/30':'text-slate-900'}`}>{n}</span>{card.marks.has(n)&&<div className="absolute w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-red-600/70 border-2 border-red-800 pointer-events-none"></div>}</>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+
+                        {target==='line' && <button onClick={()=>{if(confirm("¿Cambiar a Bingo?"))setTarget('bingo')}} className="mt-4 w-full max-w-sm py-3 bg-slate-800 border border-pink-500 rounded-xl flex justify-center gap-2 text-pink-400 font-bold shrink-0">Ya hay Línea → Ir a Bingo</button>}
                         
-                        <div className="mt-8 flex gap-4 w-full max-w-sm mb-8 shrink-0">
-                            <button onClick={()=>{if(confirm("¿Solo borrar marcas? (Mismo cartón)"))setMarks(new Set())}} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="trash"/> Limpiar</button>
-                            <button onClick={startNewGame} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="refresh"/> Nuevo</button>
+                        <div className="mt-4 flex gap-4 w-full max-w-sm mb-4 shrink-0">
+                            <button onClick={clearMarks} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="trash"/> Limpiar Fichas</button>
+                            <button onClick={startNewGame} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="refresh"/> Partida Nueva</button>
                         </div>
                     </div>
                 </div>
             );
         };
 
+        // --- MODO FÁBRICA ---
         const Factory = ({ onBack }) => {
             const [grid, setGrid] = useState(generateCard());
             const [c, setC] = useState(1);
@@ -153,6 +232,7 @@
             );
         };
 
+        // --- MODO BOMBO (CALLER) ---
         const Caller = ({ onBack }) => {
             const [history, setHistory] = useState([]);
             const [current, setCurrent] = useState(null);
@@ -250,7 +330,7 @@
                         <p className="text-slate-400">Bombo y Pantalla</p>
                     </button>
                 </div>
-                <div className="hidden sm:block mt-12 text-slate-500 text-sm shrink-0">Bingo Fiesta V9.0</div>
+                <div className="hidden sm:block mt-12 text-slate-500 text-sm shrink-0">Bingo Fiesta V10.0</div>
                 <button onClick={()=>{setMode('factory')}} className="mt-8 text-xs text-slate-600 hover:text-white flex items-center justify-center gap-2 shrink-0"><Icon name="layers"/> Imprimir Cartones</button>
             </div>
         );
