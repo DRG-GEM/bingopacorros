@@ -3,20 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bingo Fiesta V11</title>
+    <title>Bingo Master Edition</title>
     
-    <!-- LIBRERÍAS -->
+    <!-- CORE -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- UTILIDADES EXTRA -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <!-- LIBRERÍAS QR (Para verificación local sin internet) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <style>
-        html, body, #root { height: 100%; overflow: hidden; margin: 0; padding: 0; background-color: #0f172a; color: white; touch-action: manipulation; }
+        /* Ajustes para parecer una App Nativa */
+        html, body, #root { height: 100%; overflow: hidden; margin: 0; padding: 0; background-color: #0f172a; color: white; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+        
+        /* Animaciones */
         .win-pulse { animation: winPulse 2s infinite; }
         @keyframes winPulse { 0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(234, 179, 8, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
+        
+        /* Scroll bonito */
         .scroller { overflow-y: auto; scrollbar-width: thin; scrollbar-color: #475569 #0f172a; }
         .scroller::-webkit-scrollbar { width: 6px; }
         .scroller::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
@@ -25,15 +36,17 @@
 <body>
     <div id="root"></div>
 
+    <!-- Manejo de Errores -->
     <script>
         window.onerror = function(message) {
-            document.body.innerHTML = '<div style="padding:20px;text-align:center;color:red;font-family:sans-serif"><h2>Error</h2><p>'+message+'</p><button onclick="localStorage.clear();location.reload()" style="background:white;padding:10px;border-radius:8px">REINICIAR</button></div>';
+            document.body.innerHTML = '<div style="padding:20px;text-align:center;color:red;font-family:sans-serif;margin-top:50px;"><h2>Algo salió mal</h2><p>'+message+'</p><button onclick="localStorage.clear();location.reload()" style="background:white;color:black;padding:10px 20px;border:none;border-radius:10px;margin-top:20px;font-weight:bold;">REINICIAR APP</button></div>';
         };
     </script>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
+        // --- ICONOS SVG ---
         const Icon = ({ name, size=24 }) => {
             const icons = {
                 arrowLeft: <path d="M19 12H5M12 19l-7-7 7-7" />,
@@ -48,11 +61,14 @@
                 finger: <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />,
                 layers: <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />,
                 plus: <path d="M12 5v14M5 12h14" />,
-                x: <path d="M18 6L6 18M6 6l12 12" />
+                x: <path d="M18 6L6 18M6 6l12 12" />,
+                qr: <path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h6v6h-6zM9 3v6M15 9h6M9 15v6M15 15v6M3 9h6M15 3v6M21 9v6M9 21h6" />,
+                camera: <><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></>
             };
             return <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icons[name] || <circle cx="12" cy="12" r="10"/>}</svg>;
         };
 
+        // --- LÓGICA DEL BINGO 90 ---
         const generateCard = () => {
             const ranges = [[1,9], [10,19], [20,29], [30,39], [40,49], [50,59], [60,69], [70,79], [80,90]];
             let grid, attempts = 0;
@@ -67,102 +83,101 @@
             return grid;
         };
 
+        // --- COMPONENTE QR DEL JUGADOR ---
+        const PlayerQR = ({ cards, onClose }) => {
+            const qrRef = useRef(null);
+            useEffect(() => {
+                // Solo enviamos los números (grid) para ahorrar espacio en el QR
+                const data = cards.map(c => c.grid); 
+                if(qrRef.current) {
+                    qrRef.current.innerHTML = "";
+                    new QRCode(qrRef.current, { text: JSON.stringify(data), width: 256, height: 256 });
+                }
+            }, []);
+            return (
+                <div className="fixed inset-0 bg-slate-900/95 z-50 flex flex-col items-center justify-center p-4 animate-fade-in">
+                    <h2 className="text-2xl font-bold mb-4 text-white">VALIDADOR</h2>
+                    <div className="bg-white p-4 rounded-xl shadow-2xl" ref={qrRef}></div>
+                    <p className="mt-6 text-slate-300 text-center max-w-xs">Enseña este código al Admin para reclamar tu premio.</p>
+                    <button onClick={onClose} className="mt-8 px-10 py-4 bg-red-600 rounded-xl text-white font-black text-xl shadow-lg active:scale-95 transition-transform">CERRAR</button>
+                </div>
+            );
+        };
+
+        // --- COMPONENTE ESCÁNER DEL ADMIN ---
+        const AdminScanner = ({ onVerify, onClose }) => {
+            useEffect(() => {
+                const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+                scanner.render((txt) => { 
+                    try { onVerify(JSON.parse(txt)); scanner.clear(); } 
+                    catch(e){ alert("Código no válido"); } 
+                }, ()=>{});
+                return ()=> { try{scanner.clear()}catch(e){} };
+            }, []);
+            return (
+                <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-4">
+                    <h2 className="text-white font-bold mb-4 text-xl">ESCANEA AL GANADOR</h2>
+                    <div id="reader" className="w-full max-w-sm bg-white rounded-lg overflow-hidden border-4 border-blue-500"></div>
+                    <button onClick={onClose} className="mt-8 px-6 py-3 bg-red-600 rounded-lg text-white font-bold">CANCELAR</button>
+                </div>
+            );
+        };
+
+        // --- MODO JUGADOR (MASTER) ---
         const Player = ({ onBack }) => {
             const [cards, setCards] = useState(() => {
                 try {
-                    const saved = localStorage.getItem('bingo_v11_cards');
-                    if (saved) {
-                        const parsed = JSON.parse(saved);
-                        return parsed.map(c => ({ ...c, marks: new Set(c.marks) }));
-                    }
+                    const saved = localStorage.getItem('bingo_master_cards');
+                    if (saved) return JSON.parse(saved).map(c => ({...c, marks: new Set(c.marks)}));
                     return [{ id: 1, grid: generateCard(), marks: new Set() }];
                 } catch { return [{ id: 1, grid: generateCard(), marks: new Set() }]; }
             });
-
             const [target, setTarget] = useState('line'); 
             const [alert, setAlert] = useState(null);
+            const [showQR, setShowQR] = useState(false);
 
             useEffect(() => {
-                const toSave = cards.map(c => ({ ...c, marks: Array.from(c.marks) }));
-                localStorage.setItem('bingo_v11_cards', JSON.stringify(toSave));
+                localStorage.setItem('bingo_master_cards', JSON.stringify(cards.map(c=>({...c, marks:Array.from(c.marks)}))));
                 checkAllCards();
             }, [cards, target]);
 
             const checkAllCards = () => {
                 let highestWin = null;
                 let winningCardId = null;
-
                 cards.forEach(card => {
                     let rows = 0;
                     card.grid.forEach(row => { if(row.filter(n=>n).every(n=>card.marks.has(n))) rows++; });
                     const total = Array.from(card.marks).filter(m => card.grid.some(r => r.includes(m))).length;
-
-                    if (total === 15) {
-                        highestWin = 'BINGO';
-                        winningCardId = card.id;
-                    } else if (target === 'line' && rows > 0 && total < 15 && highestWin !== 'BINGO') {
-                        highestWin = 'LÍNEA';
-                        winningCardId = card.id;
-                    }
+                    if (total === 15) { highestWin = 'BINGO'; winningCardId = card.id; }
+                    else if (target === 'line' && rows > 0 && total < 15 && highestWin !== 'BINGO') { highestWin = 'LÍNEA'; winningCardId = card.id; }
                 });
-
                 if (highestWin && (alert === null || !alert.includes(highestWin))) {
                     setAlert(`${highestWin} EN CARTÓN ${winningCardId}`);
                     confetti({ particleCount: highestWin==='BINGO'?300:100, spread: 70 });
-                } else if (!highestWin) {
-                    setAlert(null);
-                }
+                    if(navigator.vibrate) navigator.vibrate([200,100,200]);
+                } else if (!highestWin) { setAlert(null); }
             };
 
-            // --- LÓGICA DE MARCADO SIMULTÁNEO ---
-            const toggleMark = (clickedCardId, num) => {
+            const toggleMark = (cardId, num) => {
                 if(!num) return;
-                
-                setCards(prevCards => {
-                    // 1. Averiguar si vamos a marcar o desmarcar
-                    // Buscamos el cartón donde se hizo click para ver el estado actual
-                    const clickedCard = prevCards.find(c => c.id === clickedCardId);
-                    const isMarked = clickedCard.marks.has(num);
-                    const shouldAdd = !isMarked; // Si estaba marcado, lo quitamos. Si no, lo ponemos.
-
-                    // 2. Aplicar ese cambio a TODOS los cartones
-                    return prevCards.map(c => {
+                setCards(prev => {
+                    // Sincronización: Si marcas el 45, se marca en TODOS tus cartones
+                    const clickedCard = prev.find(c => c.id === cardId);
+                    const isAdding = !clickedCard.marks.has(num);
+                    return prev.map(c => {
                         const newMarks = new Set(c.marks);
-                        if (shouldAdd) {
-                            newMarks.add(num);
-                        } else {
-                            newMarks.delete(num);
-                        }
+                        if (isAdding) newMarks.add(num); else newMarks.delete(num);
                         return { ...c, marks: newMarks };
                     });
                 });
             };
 
-            const addCard = () => {
-                if (cards.length >= 4) return alert("Máximo 4 cartones");
-                // Al añadir cartón, copiamos las marcas de los otros para sincronizar si ya han salido bolas
-                // O mejor, empezamos limpio y que marquen lo que ha salido.
-                // Para simplificar y evitar trampas, empezamos limpio.
-                setCards([...cards, { id: cards.length + 1, grid: generateCard(), marks: new Set() }]);
-            };
-
-            const removeCard = (id) => {
-                if (confirm("¿Eliminar este cartón?")) {
-                    setCards(prev => prev.filter(c => c.id !== id));
-                }
-            };
-
+            const addCard = () => { if (cards.length < 4) setCards([...cards, { id: cards.length + 1, grid: generateCard(), marks: new Set() }]); };
+            
             const startNewGame = () => {
-                if(confirm("¿Empezar partida nueva? (Se resetearán todos tus cartones)")) {
+                if(confirm("¿EMPEZAR NUEVA PARTIDA?")) {
                     setCards(prev => prev.map(c => ({ ...c, grid: generateCard(), marks: new Set() })));
-                    setTarget('line');
-                    setAlert(null);
-                }
-            };
-
-            const clearMarks = () => {
-                if(confirm("¿Borrar solo las fichas?")) {
-                    setCards(prev => prev.map(c => ({ ...c, marks: new Set() })));
+                    setTarget('line'); setAlert(null);
                 }
             };
 
@@ -174,19 +189,22 @@
                             <p className="text-[10px] text-slate-400 font-bold">OBJETIVO</p>
                             <p className={`text-lg font-black ${target==='line'?'text-green-400':'text-pink-500'}`}>{target==='line'?"LÍNEA":"BINGO"}</p>
                         </div>
-                        <button onClick={addCard} className="p-2 bg-blue-600 rounded-full text-white font-bold flex items-center gap-1 shadow-lg active:scale-90 transition-transform" disabled={cards.length>=4}>
-                            <Icon name="plus"/> <span className="text-xs mr-1">CARTÓN</span>
-                        </button>
+                        <div className="flex gap-2">
+                            <button onClick={()=>setShowQR(true)} className={`px-3 py-2 rounded-lg font-bold flex items-center gap-1 shadow-lg ${alert ? 'bg-purple-600 animate-pulse text-white' : 'bg-slate-700 text-slate-300'}`}>
+                                <Icon name="qr" size={20}/> <span className="hidden sm:inline">VALIDAR</span>
+                            </button>
+                            <button onClick={addCard} disabled={cards.length>=4} className="p-2 bg-blue-600 rounded-lg text-white shadow-lg"><Icon name="plus"/></button>
+                        </div>
                     </div>
                     
-                    {alert && <div className={`shrink-0 w-full py-2 text-center font-black animate-pulse ${alert.includes('BINGO')?'bg-yellow-500 text-black':'bg-green-600 text-white'}`}>¡¡ {alert} !!</div>}
+                    {alert && <div onClick={()=>setShowQR(true)} className={`cursor-pointer shrink-0 w-full py-3 text-center font-black text-xl animate-pulse shadow-lg z-20 ${alert.includes('BINGO')?'bg-yellow-500 text-black':'bg-green-600 text-white'}`}>¡¡ TIENES {alert} !! <span className="text-xs block opacity-80">(Pulsa aquí para enseñar el código)</span></div>}
                     
                     <div className="flex-1 scroller p-2 flex flex-col items-center gap-4 pb-20">
                         {cards.map(card => (
-                            <div key={card.id} className={`w-full max-w-3xl bg-[#fff9e6] border-4 border-amber-800 rounded-lg p-1 shadow-2xl relative select-none transition-transform ${alert && alert.includes(card.id) ? 'scale-105 shadow-yellow-500/50' : ''}`}>
+                            <div key={card.id} className={`w-full max-w-3xl bg-[#fff9e6] border-4 border-amber-800 rounded-lg p-1 shadow-2xl relative select-none transition-transform ${alert && alert.includes(card.id) ? 'scale-105 ring-4 ring-yellow-400' : ''}`}>
                                 <div className="flex justify-between items-end border-b-2 border-amber-900/20 pb-1 mb-1 px-2">
                                     <h1 className="text-xl font-black text-amber-900">CARTÓN {card.id}</h1>
-                                    {cards.length > 1 && <button onClick={()=>removeCard(card.id)} className="text-red-400 p-1"><Icon name="x" size={16}/></button>}
+                                    {cards.length > 1 && <button onClick={()=>setCards(cards.filter(c=>c.id!==card.id))} className="text-red-400 p-1"><Icon name="x" size={16}/></button>}
                                 </div>
                                 <div className="grid grid-rows-3 gap-0 border-2 border-amber-900 bg-amber-50">
                                     {card.grid.map((row, i) => (
@@ -202,22 +220,24 @@
                             </div>
                         ))}
 
-                        {target==='line' && <button onClick={()=>{if(confirm("¿Cambiar a Bingo?"))setTarget('bingo')}} className="mt-4 w-full max-w-sm py-3 bg-slate-800 border border-pink-500 rounded-xl flex justify-center gap-2 text-pink-400 font-bold shrink-0">Ya hay Línea → Ir a Bingo</button>}
+                        {target==='line' && <button onClick={()=>{if(confirm("¿Ya hay Línea? ¿Pasar a Bingo?"))setTarget('bingo')}} className="mt-4 w-full max-w-sm py-4 bg-slate-800 border-2 border-pink-500 rounded-xl flex justify-center gap-2 text-pink-400 font-bold shrink-0 shadow-lg">Ya hay Línea → Ir a Bingo</button>}
                         
                         <div className="mt-4 flex gap-4 w-full max-w-sm mb-4 shrink-0">
-                            <button onClick={clearMarks} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="trash"/> Limpiar Fichas</button>
-                            <button onClick={startNewGame} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="refresh"/> Partida Nueva</button>
+                            <button onClick={()=>{if(confirm("¿Limpiar fichas?"))setCards(prev=>prev.map(c=>({...c, marks:new Set()})))}} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="trash"/> Limpiar</button>
+                            <button onClick={startNewGame} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="refresh"/> Nueva</button>
                         </div>
                     </div>
+                    {showQR && <PlayerQR cards={cards} onClose={()=>setShowQR(false)}/>}
                 </div>
             );
         };
 
+        // --- MODO FÁBRICA ---
         const Factory = ({ onBack }) => {
             const [grid, setGrid] = useState(generateCard());
             const [c, setC] = useState(1);
             const ref = useRef();
-            const download = async () => {
+            const dl = async () => {
                 const cvs = await html2canvas(ref.current, {scale:2, backgroundColor:null});
                 const l = document.createElement('a'); l.download=`Carton_${c}.png`; l.href=cvs.toDataURL(); l.click();
                 setTimeout(()=>{setGrid(generateCard()); setC(c+1)}, 200);
@@ -234,17 +254,19 @@
                             </div>
                         </div>
                     </div>
-                    <button onClick={download} className="mt-auto px-8 py-4 bg-green-600 rounded-xl font-bold shadow-xl flex gap-2 shrink-0">DESCARGAR Y SIGUIENTE</button>
+                    <button onClick={dl} className="mt-auto px-8 py-4 bg-green-600 rounded-xl font-bold shadow-xl flex gap-2 shrink-0">DESCARGAR Y SIGUIENTE</button>
                 </div>
             );
         };
 
+        // --- MODO BOMBO (ADMIN MASTER) ---
         const Caller = ({ onBack }) => {
             const [history, setHistory] = useState([]);
             const [current, setCurrent] = useState(null);
             const [auto, setAuto] = useState(false);
             const [audioOn, setAudioOn] = useState(false);
-            const [checking, setChecking] = useState(false);
+            const [scanning, setScanning] = useState(false);
+            const [verifiedResult, setVerifiedResult] = useState(null); 
             const timerRef = useRef(null);
 
             const playSound = (text) => {
@@ -261,7 +283,48 @@
                 setHistory(p => [n, ...p]); setCurrent(n); playSound(`${n}`);
             };
 
-            useEffect(() => { if(auto && !checking) timerRef.current = setInterval(draw, 4000); else clearInterval(timerRef.current); return () => clearInterval(timerRef.current); }, [auto, checking, history]);
+            useEffect(() => { if(auto && !scanning && !verifiedResult) timerRef.current = setInterval(draw, 4000); else clearInterval(timerRef.current); return () => clearInterval(timerRef.current); }, [auto, scanning, verifiedResult]);
+
+            // --- LÓGICA DE VERIFICACIÓN ---
+            const verify = (cardsData) => {
+                let best = { type: null, card: -1 };
+                const hSet = new Set(history);
+                cardsData.forEach((grid, idx) => {
+                    let rows = 0;
+                    grid.forEach(row => { if(row.filter(n=>n).every(n=>hSet.has(n))) rows++; });
+                    const total = grid.flat().filter(n=>n).filter(n=>hSet.has(n)).length;
+                    if(total===15) best = { type: 'BINGO', card: idx+1 };
+                    else if(rows>0 && !best.type) best = { type: 'LÍNEA', card: idx+1 };
+                });
+
+                if(best.type) {
+                    setVerifiedResult({ ok: true, title: `¡${best.type} CORRECTO!`, sub: `En el cartón ${best.card}` });
+                    confetti(); playSound(`¡${best.type} Correcto!`);
+                } else {
+                    setVerifiedResult({ ok: false, title: "❌ INCORRECTO", sub: "Faltan números" });
+                    playSound("El cartón no es correcto");
+                }
+                setScanning(false);
+            };
+
+            const ScannerModal = () => {
+                useEffect(()=>{
+                    const s = new Html5QrcodeScanner("reader", {fps:10, qrbox:250});
+                    s.render(txt=>{ try{verify(JSON.parse(txt));s.clear()}catch(e){alert("QR Inválido")} }, ()=>{});
+                    return ()=>{try{s.clear()}catch{}};
+                },[]);
+                return <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-4"><h2 className="text-white font-bold mb-4">ESCANEA AL GANADOR</h2><div id="reader" className="w-full max-w-sm bg-white rounded-lg"></div><button onClick={()=>setScanning(false)} className="mt-8 px-6 py-3 bg-red-600 rounded text-white font-bold">CANCELAR</button></div>;
+            };
+
+            const ResultModal = () => (
+                <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+                    <div className={`p-6 rounded-2xl w-full max-w-md ${verifiedResult.ok?'bg-green-600':'bg-red-600'}`}>
+                        <h2 className="text-3xl font-black text-white mb-2">{verifiedResult.title}</h2>
+                        <p className="text-white/80 text-xl font-bold">{verifiedResult.sub}</p>
+                    </div>
+                    <button onClick={()=>setVerifiedResult(null)} className="mt-8 px-8 py-4 bg-white text-black font-black rounded-xl text-xl shadow-xl">CONTINUAR</button>
+                </div>
+            );
 
             if(!audioOn) return (
                 <div className="flex flex-col items-center justify-center h-full bg-slate-900 p-6 text-center">
@@ -272,17 +335,10 @@
                 </div>
             );
 
-            if(checking) return (
-                <div className="flex flex-col h-full bg-slate-900 p-4">
-                    <div className="shrink-0 flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-pink-500">COMPROBADOR</h2><button onClick={()=>{setChecking(false); playSound("Seguimos")}} className="bg-slate-800 px-4 py-2 rounded font-bold">VOLVER</button></div>
-                    <div className="flex-1 overflow-y-auto bg-slate-800 rounded-xl p-2 scroller"><div className="grid grid-cols-10 gap-2">{Array.from({length:90},(_,i)=>i+1).map(n => (<button key={n} onClick={()=> playSound(history.includes(n) ? "Correcto" : "No ha salido")} className={`aspect-square font-bold rounded ${history.includes(n)?'bg-green-600 text-white':'bg-slate-900 text-slate-600'}`}>{n}</button>))}</div></div>
-                    <div className="shrink-0 grid grid-cols-2 gap-4 mt-4 h-16"><button onClick={()=>{setChecking(false); playSound("Línea correcta")}} className="bg-blue-600 rounded-xl font-black">¡LÍNEA!</button><button onClick={()=>{setChecking(false); playSound("Bingo correcto")}} className="bg-pink-600 rounded-xl font-black">¡BINGO!</button></div>
-                </div>
-            );
-
             return (
                 <div className="flex flex-col md:flex-row h-full bg-slate-900 overflow-hidden">
-                    <div className="md:w-1/3 h-[40%] md:h-full flex flex-col items-center justify-center p-2 relative border-b md:border-b-0 md:border-r border-slate-700 shrink-0">
+                    {/* IZQUIERDA: BOLA */}
+                    <div className="md:w-1/3 h-[40%] md:h-full flex flex-col items-center justify-center p-2 relative border-b md:border-r border-slate-700 shrink-0">
                         <div className="absolute top-2 left-2 md:hidden z-20"><button onClick={()=>{setAuto(false);onBack()}} className="p-2 bg-slate-800 rounded-full"><Icon name="arrowLeft"/></button></div>
                         <div className="absolute top-2 right-2 md:hidden bg-slate-800 px-3 py-1 rounded-full text-blue-300 font-bold z-20">{history.length}/90</div>
                         <div onClick={()=>current && playSound(`${current}`)} className="w-[30vh] h-[30vh] md:w-[35vw] md:h-[35vw] max-w-[300px] max-h-[300px] md:max-w-[400px] md:max-h-[400px] bg-slate-800 rounded-full border-[8px] md:border-[16px] border-slate-700 flex items-center justify-center shadow-2xl cursor-pointer active:scale-95 transition-transform shrink-0">
@@ -290,6 +346,8 @@
                         </div>
                         <div className="mt-2 text-slate-500 text-sm md:text-xl font-bold shrink-0">ÚLTIMO NÚMERO</div>
                     </div>
+
+                    {/* DERECHA: PANEL & CONTROLES */}
                     <div className="md:w-2/3 h-[60%] md:h-full flex flex-col bg-slate-950 p-2 md:p-4 min-h-0">
                         <div className="hidden md:flex justify-between items-center mb-4 shrink-0">
                             <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">PANEL DE CONTROL</h2>
@@ -298,6 +356,7 @@
                                 <button onClick={()=>{if(confirm("Reiniciar?")){setHistory([]);setCurrent(null);setAuto(false)}}} className="px-4 py-2 bg-red-900/50 text-red-400 rounded-lg hover:bg-red-900 font-bold">REINICIAR</button>
                             </div>
                         </div>
+
                         <div className="flex-1 min-h-0 bg-slate-900 rounded-2xl p-2 border border-slate-800 shadow-inner overflow-y-auto scroller">
                             <div className="grid grid-cols-10 gap-1 content-start">
                                 {Array.from({length:90},(_,i)=>i+1).map(n => (
@@ -305,6 +364,7 @@
                                 ))}
                             </div>
                         </div>
+
                         <div className="mt-2 flex gap-2 h-14 md:h-20 shrink-0">
                             <div className="flex-1 bg-slate-900 rounded-2xl flex items-center justify-center gap-2 md:gap-6 border border-slate-800 p-1">
                                 <button onClick={()=>setAuto(!auto)} className={`flex-1 md:flex-none px-2 md:px-6 py-2 md:py-3 rounded-xl font-black text-xs md:text-xl flex items-center justify-center gap-2 transition-all h-full ${auto?'bg-amber-500 text-black shadow-[0_0_20px_rgba(245,158,11,0.4)]':'bg-slate-700 hover:bg-slate-600'}`}>
@@ -312,11 +372,13 @@
                                 </button>
                                 <button onClick={draw} disabled={auto} className="flex-[2] md:flex-none px-4 md:px-6 py-2 md:py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-black text-sm md:text-xl shadow-lg active:translate-y-1 h-full">SACAR BOLA</button>
                             </div>
-                            <button onClick={()=>{setAuto(false);setChecking(true)}} className="w-16 md:w-40 bg-pink-600 hover:bg-pink-500 rounded-2xl font-black text-[10px] md:text-lg flex flex-col items-center justify-center shadow-lg h-full">
-                                <span className="md:hidden"><Icon name="ticket" size={20}/></span><span className="hidden md:inline"><Icon name="ticket"/> COMPROBAR</span>
+                            <button onClick={()=>{setAuto(false);setScanning(true)}} className="w-16 md:w-40 bg-purple-600 hover:bg-purple-500 rounded-2xl font-black text-[10px] md:text-lg flex flex-col items-center justify-center shadow-lg h-full">
+                                <span className="md:hidden"><Icon name="camera" size={20}/></span><span className="hidden md:flex items-center gap-2"><Icon name="camera"/> ESCANEAR</span>
                             </button>
                         </div>
                     </div>
+                    {scanning && <ScannerModal/>}
+                    {verifiedResult && <ResultModal/>}
                 </div>
             );
         };
@@ -328,25 +390,22 @@
                     <button onClick={()=>setMode('player')} className="flex-1 p-8 bg-slate-800 rounded-3xl border-2 border-slate-700 hover:border-pink-500 transition-all hover:-translate-y-2 shadow-2xl group">
                         <div className="bg-pink-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icon name="finger"/></div>
                         <h2 className="text-2xl font-black mb-2">SOY JUGADOR</h2>
-                        <p className="text-slate-400">Cartón en el móvil</p>
+                        <p className="text-slate-400">Cartón Interactivo</p>
                     </button>
                     <button onClick={()=>setMode('caller')} className="flex-1 p-8 bg-slate-800 rounded-3xl border-2 border-slate-700 hover:border-blue-500 transition-all hover:-translate-y-2 shadow-2xl group">
                         <div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icon name="tv"/></div>
                         <h2 className="text-2xl font-black mb-2">MODO TV</h2>
-                        <p className="text-slate-400">Bombo y Pantalla</p>
+                        <p className="text-slate-400">Bombo + Verificador</p>
                     </button>
                 </div>
-                <div className="hidden sm:block mt-12 text-slate-500 text-sm shrink-0">Bingo Fiesta V11.0</div>
+                <div className="hidden sm:block mt-12 text-slate-500 text-sm shrink-0">Bingo Master Edition</div>
                 <button onClick={()=>{setMode('factory')}} className="mt-8 text-xs text-slate-600 hover:text-white flex items-center justify-center gap-2 shrink-0"><Icon name="layers"/> Imprimir Cartones</button>
             </div>
         );
 
         const App = () => {
             const [mode, setMode] = useState('menu');
-            return mode === 'menu' ? <Menu setMode={setMode}/> : 
-                   mode === 'player' ? <Player onBack={()=>setMode('menu')}/> :
-                   mode === 'factory' ? <Factory onBack={()=>setMode('menu')}/> :
-                   <Caller onBack={()=>setMode('menu')}/>;
+            return mode === 'menu' ? <Menu setMode={setMode}/> : mode === 'player' ? <Player onBack={()=>setMode('menu')}/> : mode === 'factory' ? <Factory onBack={()=>setMode('menu')}/> : <Caller onBack={()=>setMode('menu')}/>;
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
