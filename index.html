@@ -3,24 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bingo Fiesta Virtual</title>
+    <title>Bingo Fiesta Final</title>
     
-    <!-- React y ReactDOM -->
+    <!-- React & Tailwind -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- html2canvas (Para la fábrica) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- Iconos -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
         body { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
         .marker { animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 0.8; } }
+        .win-pulse { animation: winPulse 2s infinite; }
+        @keyframes winPulse { 0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(234, 179, 8, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
     </style>
 </head>
 <body class="bg-slate-900 text-white select-none">
@@ -32,22 +31,24 @@
         // Iconos
         const Icon = ({ name, size=24, className="" }) => {
             const icons = {
-                play: <polygon points="5 3 19 12 5 21 5 3" />,
-                pause: <path d="M6 4h4v16H6zm8 0h4v16h-4z" />,
-                refresh: <path d="M23 4v6h-6M1 20v-6h6" />, 
                 arrowLeft: <path d="M19 12H5M12 19l-7-7 7-7" />,
-                ticket: <path d="M3 7v2a3 3 0 0 1 3 3 3 3 0 0 1-3 3v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2a3 3 0 0 1-3-3 3 3 0 0 1 3-3V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z" />,
-                check: <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />,
-                download: <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />,
                 finger: <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />,
                 volume: <path d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07" />,
-                layers: <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />,
-                trash: <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                trash: <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />,
+                refresh: <path d="M23 4v6h-6M1 20v-6h6" />,
+                check: <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />,
+                next: <path d="M13 17l5-5-5-5M6 17l5-5-5-5" />,
+                play: <polygon points="5 3 19 12 5 21 5 3" />,
+                pause: <path d="M6 4h4v16H6zm8 0h4v16h-4z" />,
+                ticket: <path d="M3 7v2a3 3 0 0 1 3 3 3 3 0 0 1-3 3v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2a3 3 0 0 1-3-3 3 3 0 0 1 3-3V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z" />,
+                trophy: <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />,
+                star: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />,
+                layers: <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
             };
             return <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name]}</svg>;
         };
 
-        // --- GENERADOR ---
+        // --- LÓGICA GENERADOR ---
         const generate90BallCard = () => {
             const colRanges = [{min:1,max:9},{min:10,max:19},{min:20,max:29},{min:30,max:39},{min:40,max:49},{min:50,max:59},{min:60,max:69},{min:70,max:79},{min:80,max:90}];
             let grid, rowCounts, attempts = 0;
@@ -78,80 +79,126 @@
             return grid;
         };
 
-        // --- MODO JUGADOR INTERACTIVO ---
+        // --- MODO JUGADOR INTERACTIVO CON FASES ---
         const InteractivePlayer = ({ onBack }) => {
             const [grid, setGrid] = useState(() => {
-                const saved = localStorage.getItem('bingo_card');
+                const saved = localStorage.getItem('bingo_card_v2');
                 return saved ? JSON.parse(saved) : generate90BallCard();
             });
             const [marks, setMarks] = useState(() => {
-                const savedM = localStorage.getItem('bingo_marks');
+                const savedM = localStorage.getItem('bingo_marks_v2');
                 return savedM ? new Set(JSON.parse(savedM)) : new Set();
             });
+            
+            // FASE DEL JUEGO: 'line' (Buscamos línea) o 'bingo' (Buscamos bingo)
+            const [gamePhase, setGamePhase] = useState('line'); 
+            const [status, setStatus] = useState("playing"); // playing, line, bingo
 
-            useEffect(() => {
-                localStorage.setItem('bingo_card', JSON.stringify(grid));
-            }, [grid]);
+            useEffect(() => { localStorage.setItem('bingo_card_v2', JSON.stringify(grid)); }, [grid]);
+            useEffect(() => { localStorage.setItem('bingo_marks_v2', JSON.stringify(Array.from(marks))); checkWinConditions(); }, [marks, gamePhase]);
 
-            useEffect(() => {
-                localStorage.setItem('bingo_marks', JSON.stringify(Array.from(marks)));
-            }, [marks]);
+            const checkWinConditions = () => {
+                // Calcular estado actual
+                let rowsCompleted = 0;
+                grid.forEach(row => {
+                    const nums = row.filter(n => n !== null);
+                    if (nums.every(n => marks.has(n))) rowsCompleted++;
+                });
+                
+                // Total marcados válidos
+                const totalMarked = Array.from(marks).filter(m => grid.some(row => row.includes(m))).length;
+
+                // LÓGICA DE FASES
+                // 1. Si tenemos 15 aciertos, SIEMPRE es Bingo (da igual la fase)
+                if (totalMarked === 15 && status !== 'bingo') {
+                    triggerBingo();
+                } 
+                // 2. Si tenemos línea, SOLO avisamos si estamos en fase 'line'
+                else if (gamePhase === 'line' && rowsCompleted > 0 && totalMarked < 15 && status === 'playing') {
+                    triggerLine();
+                }
+                // 3. Reset si no hay nada
+                else if (rowsCompleted === 0 && totalMarked < 15) {
+                    setStatus('playing');
+                }
+            };
+
+            const triggerLine = () => {
+                setStatus('line');
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+            };
+
+            const triggerBingo = () => {
+                setStatus('bingo');
+                const end = Date.now() + 3000;
+                const frame = () => {
+                    confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 } });
+                    confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 } });
+                    if (Date.now() < end) requestAnimationFrame(frame);
+                };
+                frame();
+                if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 1000]);
+            };
 
             const toggleMark = (num) => {
                 if (!num) return;
                 const newMarks = new Set(marks);
-                if (newMarks.has(num)) newMarks.delete(num);
-                else newMarks.add(num);
+                if (newMarks.has(num)) newMarks.delete(num); else newMarks.add(num);
                 setMarks(newMarks);
-                // Vibración táctil si el móvil lo soporta
-                if (navigator.vibrate) navigator.vibrate(20); 
             };
 
-            const resetCard = () => {
-                if (confirm("¿Seguro? Perderás los números marcados.")) {
-                    const newGrid = generate90BallCard();
-                    setGrid(newGrid);
-                    setMarks(new Set());
-                }
-            };
-
-            const cleanMarks = () => {
-                if (confirm("¿Borrar solo las marcas rojas?")) {
-                    setMarks(new Set());
+            // Cambiar fase manualmente cuando alguien canta línea
+            const advancePhase = () => {
+                if (confirm("¿Alguien ha cantado LÍNEA ya? \n\nSi aceptas, tu cartón dejará de avisar de las líneas y solo buscará el BINGO.")) {
+                    setGamePhase('bingo');
+                    setStatus('playing'); // Reseteamos alerta visual
+                    window.scrollTo(0,0);
                 }
             };
 
             return (
-                <div className="flex flex-col items-center min-h-screen bg-slate-900 pb-8">
-                    {/* Header */}
-                    <div className="w-full bg-slate-800 p-4 shadow-lg flex justify-between items-center sticky top-0 z-50">
-                        <button onClick={onBack} className="p-2 bg-slate-700 rounded-full"><Icon name="arrowLeft"/></button>
-                        <h2 className="text-xl font-black text-pink-500">MI CARTÓN</h2>
-                        <div className="w-10"></div>
+                <div className="flex flex-col items-center min-h-screen bg-slate-900 pb-32">
+                    {/* Header Inteligente */}
+                    <div className="w-full sticky top-0 z-50 shadow-xl bg-slate-800">
+                        <div className="p-3 flex justify-between items-center">
+                            <button onClick={onBack} className="p-2 bg-slate-700 rounded-full"><Icon name="arrowLeft"/></button>
+                            <div className="text-center">
+                                <h2 className="text-sm font-bold text-slate-400">OBJETIVO ACTUAL</h2>
+                                <div className={`text-xl font-black ${gamePhase==='line'?'text-green-400':'text-pink-500'}`}>
+                                    {gamePhase === 'line' ? "HACER LÍNEA" : "HACER BINGO"}
+                                </div>
+                            </div>
+                            <div className="w-10"></div>
+                        </div>
+                        
+                        {/* Mensaje de Premio */}
+                        <div className={`w-full py-2 text-center font-black text-sm tracking-widest transition-colors duration-500
+                            ${status === 'bingo' ? 'bg-yellow-400 text-black animate-pulse' : 
+                              status === 'line' ? 'bg-green-500 text-white' : 'hidden'}`}>
+                            {status === 'bingo' ? "¡¡ BINGO !! 🏆" : "¡¡ LÍNEA !! ⭐"}
+                        </div>
                     </div>
 
                     <div className="flex-1 w-full max-w-4xl p-2 sm:p-6 flex flex-col items-center justify-center">
-                        <div className="bg-[#fff9e6] border-4 border-amber-800 p-2 sm:p-4 rounded-lg w-full shadow-2xl relative select-none">
+                        {/* Cartón */}
+                        <div className={`bg-[#fff9e6] border-4 border-amber-800 p-2 sm:p-4 rounded-lg w-full shadow-2xl relative select-none transition-all duration-500 ${status === 'bingo' ? 'win-pulse scale-105' : ''}`}>
                             <div className="flex justify-between items-end border-b-2 border-amber-900/30 pb-2 mb-2">
-                                <h2 className="text-2xl sm:text-4xl font-black text-amber-900">BINGO</h2>
-                                <div className="text-xs font-bold text-amber-900/60">TOCA PARA TACHAR</div>
+                                <h2 className="text-3xl font-black text-amber-900">BINGO</h2>
+                                <div className="text-[10px] font-bold text-amber-900/60 flex flex-col items-end">
+                                    <span>TOCA PARA TACHAR</span>
+                                    {marks.size > 0 && <span>MARCADOS: {marks.size}/15</span>}
+                                </div>
                             </div>
-                            
                             <div className="border-2 border-amber-900 grid grid-rows-3 bg-amber-100/50">
                                 {grid.map((row, i) => (
-                                    <div key={i} className={`grid grid-cols-9 divide-x-2 divide-amber-900 ${i<2 ? 'border-b-2 border-amber-900' : ''}`}>
+                                    <div key={i} className={`grid grid-cols-9 divide-x-2 divide-amber-900 ${i<2 ? 'border-b-2 border-amber-900' : ''} ${row.filter(n=>n).every(n=>marks.has(n)) ? 'bg-green-100' : ''}`}>
                                         {row.map((n, j) => (
-                                            <div 
-                                                key={j} 
-                                                onClick={() => toggleMark(n)}
-                                                className="h-12 sm:h-20 flex items-center justify-center relative cursor-pointer active:bg-amber-200/50 transition-colors"
-                                            >
+                                            <div key={j} onClick={() => toggleMark(n)} className="h-12 sm:h-20 flex items-center justify-center relative cursor-pointer active:bg-amber-200/50">
                                                 {n ? (
                                                     <>
-                                                        <span className={`text-xl sm:text-4xl font-bold z-10 transition-colors ${marks.has(n) ? 'text-amber-900/40' : 'text-slate-900'}`}>{n}</span>
-                                                        {marks.has(n) && (
-                                                            <div className="marker absolute w-10 h-10 sm:w-16 sm:h-16 rounded-full bg-red-600/60 border-4 border-red-700/50 z-20 pointer-events-none"></div>
-                                                        )}
+                                                        <span className={`text-xl sm:text-4xl font-bold z-10 ${marks.has(n) ? 'text-amber-900/30' : 'text-slate-900'}`}>{n}</span>
+                                                        {marks.has(n) && <div className="marker absolute w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-red-600/70 border-4 border-red-700/50 z-20 pointer-events-none shadow-sm"></div>}
                                                     </>
                                                 ) : null}
                                             </div>
@@ -161,21 +208,27 @@
                             </div>
                         </div>
 
-                        <div className="mt-8 grid grid-cols-2 gap-4 w-full max-w-sm">
-                            <button onClick={cleanMarks} className="p-4 bg-slate-800 text-slate-300 rounded-xl font-bold flex flex-col items-center gap-2 hover:bg-slate-700">
-                                <Icon name="trash" /> Limpiar Marcas
+                        {/* Botón de cambio de fase (Solo visible si estamos en fase línea) */}
+                        {gamePhase === 'line' && (
+                            <button 
+                                onClick={advancePhase}
+                                className="mt-8 w-full max-w-sm py-4 bg-slate-800 border-2 border-pink-500/50 hover:bg-slate-700 rounded-xl text-pink-400 font-bold flex items-center justify-center gap-3 animate-pulse"
+                            >
+                                <Icon name="next" />
+                                <span>¡Ya hay Línea! → Ir a Bingo</span>
                             </button>
-                            <button onClick={resetCard} className="p-4 bg-slate-800 text-slate-300 rounded-xl font-bold flex flex-col items-center gap-2 hover:bg-slate-700">
-                                <Icon name="refresh" /> Nuevo Cartón
-                            </button>
+                        )}
+
+                        {/* Botones de reseteo */}
+                        <div className="mt-8 grid grid-cols-2 gap-4 w-full max-w-sm opacity-50 hover:opacity-100 transition-opacity">
+                            <button onClick={()=>setMarks(new Set())} className="p-3 bg-slate-800 text-slate-300 rounded-xl font-bold flex justify-center gap-2"><Icon name="trash" size={20}/> Borrar</button>
+                            <button onClick={()=>{if(confirm("¿Nuevo cartón?")){setGrid(generate90BallCard());setMarks(new Set());setGamePhase('line');setStatus('playing');}}} className="p-3 bg-slate-800 text-slate-300 rounded-xl font-bold flex justify-center gap-2"><Icon name="refresh" size={20}/> Nuevo</button>
                         </div>
-                        <p className="mt-4 text-xs text-slate-500 text-center">Tu cartón se guarda automáticamente si cierras la app.</p>
                     </div>
                 </div>
             );
         };
 
-        // --- MODO FÁBRICA (Para imprimir/fotos) ---
         const FactoryMode = ({ onBack }) => {
             const [grid, setGrid] = useState(generate90BallCard());
             const [c, setC] = useState(1);
@@ -190,7 +243,6 @@
                     <button onClick={onBack} className="self-start mb-4 p-2 bg-slate-800 rounded-full"><Icon name="arrowLeft"/></button>
                     <div className="text-2xl font-bold mb-2 text-green-400">Fábrica #{c}</div>
                     <div className="bg-white p-1 rounded-xl shadow-lg mb-4 max-w-full overflow-hidden scale-75 origin-top">
-                         {/* Reutilizamos visualización simple para la foto */}
                          <div ref={cardRef} className="bg-[#fff9e6] border-4 border-amber-800 p-4 rounded-lg w-[800px] text-slate-900 font-mono relative">
                             <div className="flex justify-between items-end border-b-2 border-amber-900/30 pb-2 mb-2"><h2 className="text-4xl font-black text-amber-900">BINGO</h2><span>#{c}</span></div>
                             <div className="border-2 border-amber-900 grid grid-rows-3 bg-amber-100/50">
@@ -203,7 +255,6 @@
             );
         };
 
-        // --- MODO BOMBO (Caller) ---
         const CallerMode = ({ onBack }) => {
             const [history, setHistory] = useState([]);
             const [current, setCurrent] = useState(null);
@@ -211,30 +262,23 @@
             const [check, setCheck] = useState(false);
             const [audioEnabled, setAudioEnabled] = useState(false);
             const timer = useRef(null);
-
             const playAudio = (text) => {
                 if (!window.speechSynthesis) return;
-                try {
-                    const Ctx = window.AudioContext || window.webkitAudioContext;
-                    if (Ctx) { const ctx = new Ctx(); const o = ctx.createOscillator(); o.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.05); }
-                } catch(e) {}
+                try { const Ctx = window.AudioContext || window.webkitAudioContext; if (Ctx) { const ctx = new Ctx(); const o = ctx.createOscillator(); o.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.05); } } catch(e) {}
                 window.speechSynthesis.cancel();
                 const u = new SpeechSynthesisUtterance(text);
                 u.lang = 'es-ES'; u.rate = 1; window.speechSynthesis.speak(u);
             };
-
             const draw = () => {
                 if (history.length >= 90) return setAuto(false);
                 let n; do { n = Math.floor(Math.random()*90)+1; } while (history.includes(n));
                 setHistory(p => [n, ...p]); setCurrent(n); playAudio(`${n}`);
             };
-
             useEffect(() => {
                 if (auto && !check) timer.current = setInterval(draw, 4000);
                 else clearInterval(timer.current);
                 return () => clearInterval(timer.current);
             }, [auto, check, history]);
-
             if (!audioEnabled) return (
                 <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 p-6 text-center">
                     <div className="animate-pulse mb-6 text-pink-500"><Icon name="volume" size={64}/></div>
@@ -243,7 +287,6 @@
                     <button onClick={onBack} className="mt-8 text-slate-500 underline">Volver</button>
                 </div>
             );
-
             return (
                 <div className="flex flex-col h-screen p-2 max-w-3xl mx-auto">
                     <div className="flex justify-between items-center mb-4">
