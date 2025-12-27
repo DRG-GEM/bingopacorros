@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bingo Fiesta V5</title>
+    <title>Bingo TV Party</title>
     
-    <!-- LIBRERÍAS ESENCIALES (Cargadas de forma segura) -->
+    <!-- LIBRERÍAS -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -14,350 +14,118 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <style>
-        body { touch-action: manipulation; -webkit-tap-highlight-color: transparent; background-color: #0f172a; color: white; }
+        body { touch-action: manipulation; -webkit-tap-highlight-color: transparent; background-color: #0f172a; color: white; overflow: hidden; }
         .win-pulse { animation: winPulse 2s infinite; }
         @keyframes winPulse { 0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(234, 179, 8, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
-        /* Animación suave */
-        .fade-in { animation: fadeIn 0.5s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <!-- Capturador de Errores Global -->
     <script>
         window.onerror = function(message, source, lineno, colno, error) {
-            document.body.innerHTML = '<div style="padding:20px; text-align:center; color:red;"><h2>¡Ups! Algo falló.</h2><p>'+message+'</p><button onclick="localStorage.clear();location.reload()" style="background:white;color:black;padding:10px;margin-top:20px;">BORRAR DATOS Y REINICIAR</button></div>';
+            console.error(error);
+            document.body.innerHTML = '<div style="padding:20px;text-align:center;color:red;font-family:sans-serif;"><h2>Error</h2><p>'+message+'</p><button onclick="localStorage.clear();location.reload()" style="background:white;color:black;padding:10px;border-radius:8px;border:none;margin-top:10px;cursor:pointer;">REINICIAR APP</button></div>';
         };
     </script>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- ICONOS (SVG Manuales para evitar errores de carga) ---
+        // --- ICONOS CORREGIDOS ---
         const Icon = ({ name }) => {
             const icons = {
                 arrowLeft: <path d="M19 12H5M12 19l-7-7 7-7" />,
-                home: <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
-                check: <path d="M20 6L9 17l-5-5" />,
-                trash: <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />,
-                refresh: <path d="M23 4v6h-6M1 20v-6h6" />,
                 volume: <path d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07" />,
                 play: <polygon points="5 3 19 12 5 21 5 3" />,
                 pause: <path d="M6 4h4v16H6zm8 0h4v16h-4z" />,
-                next: <path d="M13 17l5-5-5-5M6 17l5-5-5-5" />,
+                refresh: <path d="M23 4v6h-6M1 20v-6h6" />,
+                trash: <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />,
+                check: <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />,
                 ticket: <path d="M3 7v2a3 3 0 0 1 3 3 3 3 0 0 1-3 3v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2a3 3 0 0 1-3-3 3 3 0 0 1 3-3V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z" />,
-                download: <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                // AQUÍ ESTABA EL ERROR: Ahora usamos <>...</> para agrupar los elementos
+                tv: <><rect x="2" y="7" width="20" height="15" rx="2" ry="2" /><polyline points="17 2 12 7 7 2" /></>,
+                finger: <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />,
+                layers: <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
             };
             return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icons[name] || <circle cx="12" cy="12" r="10"/>}</svg>;
         };
 
-        // --- LÓGICA DE BINGO 90 (Robusta) ---
+        // --- GENERADOR ---
         const generateCard = () => {
             const ranges = [[1,9], [10,19], [20,29], [30,39], [40,49], [50,59], [60,69], [70,79], [80,90]];
             let grid, attempts = 0;
-            // Intentar generar hasta conseguir uno válido (max 2000 intentos para no colgar)
             while(attempts < 2000) {
                 grid = Array(3).fill(null).map(() => Array(9).fill(null));
-                const rowCounts = [0,0,0];
-                const colCounts = Array(9).fill(0);
-                
-                // 1. Asegurar 1 número por columna
-                for(let c=0; c<9; c++) {
-                    let r;
-                    do { r = Math.floor(Math.random()*3); } while(rowCounts[r] >= 5);
-                    grid[r][c] = "P"; rowCounts[r]++; colCounts[c]++;
-                }
-                
-                // 2. Rellenar hasta 15 números (6 restantes)
-                let remaining = 6;
-                while(remaining > 0) {
-                    let c = Math.floor(Math.random()*9);
-                    if(colCounts[c] < 2) { // Max 2 por columna (estándar)
-                        // Buscar fila disponible
-                        const validRows = [0,1,2].filter(r => grid[r][c] === null && rowCounts[r] < 5);
-                        if(validRows.length > 0) {
-                            const r = validRows[Math.floor(Math.random()*validRows.length)];
-                            grid[r][c] = "P"; rowCounts[r]++; colCounts[c]++; remaining--;
-                        }
-                    }
-                }
-                
-                // 3. Poner números reales
-                for(let c=0; c<9; c++) {
-                    const slots = [];
-                    for(let r=0; r<3; r++) if(grid[r][c] === "P") slots.push(r);
-                    
-                    const nums = new Set();
-                    const [min, max] = ranges[c];
-                    while(nums.size < slots.length) nums.add(Math.floor(Math.random() * (max - min + 1)) + min);
-                    const sorted = Array.from(nums).sort((a,b)=>a-b);
-                    slots.forEach((r, idx) => grid[r][c] = sorted[idx]);
-                }
-                
-                // Verificar que todas las filas tienen 5
-                if(rowCounts.every(c => c === 5)) return grid;
-                attempts++;
+                const rc = [0,0,0], cc = Array(9).fill(0);
+                for(let c=0; c<9; c++) { let r; do{r=Math.floor(Math.random()*3)}while(rc[r]>=5); grid[r][c]="P"; rc[r]++; cc[c]++; }
+                let rem=6; while(rem>0) { let c=Math.floor(Math.random()*9); if(cc[c]<2) { const vr=[0,1,2].filter(r=>grid[r][c]===null&&rc[r]<5); if(vr.length){ const r=vr[Math.floor(Math.random()*vr.length)]; grid[r][c]="P"; rc[r]++; cc[c]++; rem--; } } }
+                for(let c=0; c<9; c++) { const s=[]; for(let r=0; r<3; r++) if(grid[r][c]==="P") s.push(r); const n=new Set(); const [min,max]=ranges[c]; while(n.size<s.length) n.add(Math.floor(Math.random()*(max-min+1))+min); const sorted=Array.from(n).sort((a,b)=>a-b); s.forEach((r,i)=>grid[r][c]=sorted[i]); }
+                if(rc.every(c=>c===5)) return grid; attempts++;
             }
-            return grid; // Fallback
+            return grid;
         };
 
-        // --- JUGADOR INTERACTIVO (Con Fases) ---
+        // --- MODO JUGADOR ---
         const Player = ({ onBack }) => {
-            const [grid, setGrid] = useState(() => {
-                try {
-                    const saved = localStorage.getItem('bingo_v5_grid');
-                    return saved ? JSON.parse(saved) : generateCard();
-                } catch(e) { return generateCard(); }
-            });
-            const [marks, setMarks] = useState(() => {
-                try {
-                    const saved = localStorage.getItem('bingo_v5_marks');
-                    return saved ? new Set(JSON.parse(saved)) : new Set();
-                } catch(e) { return new Set(); }
-            });
-            
-            // Estado: 'line' (Buscando Línea) o 'bingo' (Buscando Bingo)
+            const [grid, setGrid] = useState(() => { try { return JSON.parse(localStorage.getItem('b_g')) || generateCard(); } catch { return generateCard(); } });
+            const [marks, setMarks] = useState(() => { try { return new Set(JSON.parse(localStorage.getItem('b_m'))); } catch { return new Set(); } });
             const [target, setTarget] = useState('line'); 
-            const [alert, setAlert] = useState(null); // 'LINEA', 'BINGO' o null
+            const [alert, setAlert] = useState(null);
 
-            // Guardar datos
-            useEffect(() => { localStorage.setItem('bingo_v5_grid', JSON.stringify(grid)); }, [grid]);
-            useEffect(() => { localStorage.setItem('bingo_v5_marks', JSON.stringify(Array.from(marks))); checkWin(); }, [marks, target]);
+            useEffect(() => { localStorage.setItem('b_g', JSON.stringify(grid)); }, [grid]);
+            useEffect(() => { localStorage.setItem('b_m', JSON.stringify(Array.from(marks))); check(); }, [marks, target]);
 
-            const checkWin = () => {
-                let rows = 0;
-                grid.forEach(row => {
-                    const nums = row.filter(n => n);
-                    if(nums.every(n => marks.has(n))) rows++;
-                });
-
+            const check = () => {
+                let rows = 0; grid.forEach(row => { if(row.filter(n=>n).every(n=>marks.has(n))) rows++; });
                 const total = Array.from(marks).filter(m => grid.some(r => r.includes(m))).length;
-
-                // Lógica de fases
-                if (total === 15 && alert !== 'BINGO') {
-                    setAlert('BINGO');
-                    triggerConfetti(true);
-                } else if (target === 'line' && rows > 0 && total < 15 && alert !== 'LINEA') {
-                    setAlert('LINEA');
-                    triggerConfetti(false);
-                } else if (target === 'bingo' && total < 15) {
-                    setAlert(null); // Si estábamos en modo bingo y borran marcas
-                }
+                if (total === 15 && alert !== 'BINGO') { setAlert('BINGO'); confetti({particleCount:300,spread:70}); }
+                else if (target === 'line' && rows > 0 && total < 15 && alert !== 'LINEA') { setAlert('LINEA'); confetti({particleCount:100,spread:70}); }
             };
 
-            const triggerConfetti = (isBingo) => {
-                if (navigator.vibrate) navigator.vibrate(isBingo ? [500,200,500] : [200,100,200]);
-                const count = isBingo ? 300 : 100;
-                confetti({ particleCount: count, spread: 70, origin: { y: 0.6 } });
-            };
-
-            const toggle = (n) => {
-                if(!n) return;
-                const next = new Set(marks);
-                if(next.has(n)) next.delete(n); else next.add(n);
-                setMarks(next);
-            };
-
-            const changePhase = () => {
-                if(confirm("¿Ya han cantado LÍNEA?\n\nPulsa ACEPTAR para cambiar el objetivo a BINGO.")) {
-                    setTarget('bingo');
-                    setAlert(null); // Limpiar alerta visual
-                }
-            };
+            const toggle = (n) => { if(!n) return; const nm = new Set(marks); if(nm.has(n)) nm.delete(n); else nm.add(n); setMarks(nm); };
 
             return (
-                <div className="flex flex-col min-h-screen bg-slate-900 pb-20">
-                    {/* Header */}
-                    <div className="sticky top-0 z-50 bg-slate-800 shadow-xl">
-                        <div className="flex items-center justify-between p-3">
-                            <button onClick={onBack} className="p-2 bg-slate-700 rounded-full"><Icon name="arrowLeft"/></button>
-                            <div className="text-center">
-                                <p className="text-xs text-slate-400 font-bold">OBJETIVO</p>
-                                <p className={`text-xl font-black ${target==='line'?'text-green-400':'text-pink-500'}`}>
-                                    {target === 'line' ? "LÍNEA" : "BINGO"}
-                                </p>
-                            </div>
-                            <div className="w-10"></div>
-                        </div>
-                        {/* Alerta de Ganador */}
-                        {alert && (
-                            <div className={`w-full py-2 text-center font-black text-lg tracking-widest animate-pulse
-                                ${alert === 'BINGO' ? 'bg-yellow-500 text-black' : 'bg-green-600 text-white'}`}>
-                                ¡¡ TIENES {alert} !!
-                            </div>
-                        )}
+                <div className="flex flex-col h-screen bg-slate-900 overflow-y-auto">
+                    <div className="sticky top-0 z-50 bg-slate-800 shadow-xl p-3 flex justify-between items-center">
+                        <button onClick={onBack} className="p-2 bg-slate-700 rounded-full"><Icon name="arrowLeft"/></button>
+                        <div className="text-center"><p className="text-xs text-slate-400 font-bold">OBJETIVO</p><p className={`text-xl font-black ${target==='line'?'text-green-400':'text-pink-500'}`}>{target==='line'?"LÍNEA":"BINGO"}</p></div>
+                        <div className="w-10"></div>
                     </div>
-
+                    {alert && <div className={`w-full py-2 text-center font-black animate-pulse ${alert==='BINGO'?'bg-yellow-500 text-black':'bg-green-600 text-white'}`}>¡¡ {alert} !!</div>}
                     <div className="p-4 flex-1 flex flex-col items-center justify-center">
-                        <div className={`w-full max-w-2xl bg-[#fff9e6] border-4 border-amber-800 rounded-lg p-3 shadow-2xl relative select-none transition-transform duration-500 ${alert==='BINGO'?'scale-105 shadow-yellow-500/50':''}`}>
-                            <div className="flex justify-between items-end border-b-2 border-amber-900/20 pb-2 mb-2">
-                                <h1 className="text-4xl font-black text-amber-900">BINGO</h1>
-                                <span className="text-xs font-bold text-amber-900/50">ID: {Math.floor(Math.random()*999)}</span>
-                            </div>
-
+                        <div className={`w-full max-w-3xl bg-[#fff9e6] border-4 border-amber-800 rounded-lg p-2 shadow-2xl relative select-none transition-transform ${alert==='BINGO'?'scale-105 shadow-yellow-500/50':''}`}>
+                            <div className="flex justify-between items-end border-b-2 border-amber-900/20 pb-2 mb-2"><h1 className="text-3xl sm:text-4xl font-black text-amber-900">BINGO</h1><span className="text-xs font-bold text-amber-900/50">TOCA PARA TACHAR</span></div>
                             <div className="grid grid-rows-3 gap-0 border-2 border-amber-900 bg-amber-50">
-                                {grid.map((row, i) => {
-                                    const isRowFull = row.filter(n=>n).every(n=>marks.has(n));
-                                    return (
-                                        <div key={i} className={`grid grid-cols-9 divide-x-2 divide-amber-900 h-16 sm:h-24 ${i<2?'border-b-2 border-amber-900':''} ${isRowFull?'bg-green-200':''}`}>
-                                            {row.map((n, j) => (
-                                                <div key={j} onClick={()=>toggle(n)} className="relative flex items-center justify-center cursor-pointer active:bg-amber-200">
-                                                    {n && (
-                                                        <>
-                                                            <span className={`text-xl sm:text-4xl font-bold z-10 ${marks.has(n)?'text-amber-900/30':'text-slate-900'}`}>{n}</span>
-                                                            {marks.has(n) && <div className="absolute w-8 h-8 sm:w-14 sm:h-14 rounded-full bg-red-600/70 border-2 border-red-800 pointer-events-none"></div>}
-                                                        </>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    );
-                                })}
+                                {grid.map((row, i) => (
+                                    <div key={i} className={`grid grid-cols-9 divide-x-2 divide-amber-900 h-16 sm:h-24 md:h-28 ${i<2?'border-b-2 border-amber-900':''} ${row.filter(n=>n).every(n=>marks.has(n))?'bg-green-200':''}`}>
+                                        {row.map((n, j) => (
+                                            <div key={j} onClick={()=>toggle(n)} className="relative flex items-center justify-center cursor-pointer active:bg-amber-200">
+                                                {n && <><span className={`text-xl sm:text-4xl md:text-5xl font-bold z-10 ${marks.has(n)?'text-amber-900/30':'text-slate-900'}`}>{n}</span>{marks.has(n)&&<div className="absolute w-8 h-8 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-red-600/70 border-2 border-red-800 pointer-events-none"></div>}</>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ))}
                             </div>
                         </div>
-
-                        {/* Botón Cambio de Fase */}
-                        {target === 'line' && (
-                            <button onClick={changePhase} className="mt-8 w-full max-w-sm py-4 bg-slate-800 border-2 border-slate-600 hover:border-pink-500 rounded-xl flex items-center justify-center gap-3 font-bold text-slate-300 hover:text-pink-400 transition-all">
-                                <Icon name="next"/> <span>Ya hay Línea → Ir a Bingo</span>
-                            </button>
-                        )}
-
-                        <div className="mt-8 flex gap-4 w-full max-w-sm">
-                            <button onClick={()=>{if(confirm("¿Borrar marcas?"))setMarks(new Set())}} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="trash"/> Limpiar</button>
-                            <button onClick={()=>{if(confirm("¿Nuevo cartón?"))setGrid(generateCard())}} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="refresh"/> Nuevo</button>
-                        </div>
+                        {target==='line' && <button onClick={()=>{if(confirm("¿Cambiar a Bingo?"))setTarget('bingo')}} className="mt-8 w-full max-w-sm py-4 bg-slate-800 border border-pink-500 rounded-xl flex justify-center gap-2 text-pink-400 font-bold">Ya hay Línea → Ir a Bingo</button>}
+                        <div className="mt-8 flex gap-4 w-full max-w-sm"><button onClick={()=>{if(confirm("¿Borrar?"))setMarks(new Set())}} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="trash"/> Limpiar</button><button onClick={()=>{if(confirm("¿Nuevo?"))setGrid(generateCard())}} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="refresh"/> Nuevo</button></div>
                     </div>
                 </div>
             );
         };
 
-        // --- MODO BOMBO (Caller) ---
-        const Caller = ({ onBack }) => {
-            const [history, setHistory] = useState([]);
-            const [current, setCurrent] = useState(null);
-            const [auto, setAuto] = useState(false);
-            const [audioOn, setAudioOn] = useState(false);
-            const [checking, setChecking] = useState(false);
-            const timerRef = useRef(null);
-
-            // Audio Hack para móviles
-            const playSound = (text) => {
-                if(!window.speechSynthesis) return;
-                // Beep silencioso para despertar audio
-                try {
-                    const Ctx = window.AudioContext || window.webkitAudioContext;
-                    if(Ctx) {
-                        const ctx = new Ctx(); const o = ctx.createOscillator();
-                        o.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.01);
-                    }
-                } catch(e) {}
-                // Voz
-                window.speechSynthesis.cancel();
-                const u = new SpeechSynthesisUtterance(text);
-                u.lang = 'es-ES'; u.rate = 1;
-                window.speechSynthesis.speak(u);
-            };
-
-            const draw = () => {
-                if(history.length >= 90) return setAuto(false);
-                let n; do { n = Math.floor(Math.random()*90)+1; } while(history.includes(n));
-                setHistory(prev => [n, ...prev]);
-                setCurrent(n);
-                playSound(`${n}`);
-            };
-
-            useEffect(() => {
-                if(auto && !checking) timerRef.current = setInterval(draw, 4000);
-                else clearInterval(timerRef.current);
-                return () => clearInterval(timerRef.current);
-            }, [auto, checking, history]);
-
-            if(!audioOn) return (
-                <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 p-6 text-center">
-                    <div className="mb-6 text-pink-500 animate-bounce"><Icon name="volume"/></div>
-                    <h1 className="text-3xl font-black mb-4">SONIDO BOMBO</h1>
-                    <button onClick={()=>{setAudioOn(true); playSound("Conectado")}} className="w-full py-5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-bold text-xl shadow-lg">CONECTAR ALTAVOZ</button>
-                    <button onClick={onBack} className="mt-6 text-slate-500 underline">Volver</button>
-                </div>
-            );
-
-            if(checking) return (
-                <div className="flex flex-col h-screen bg-slate-900 p-4">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-pink-500">COMPROBADOR</h2>
-                        <button onClick={()=>{setChecking(false); playSound("Seguimos")}} className="bg-slate-800 px-4 py-2 rounded font-bold">VOLVER</button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto bg-slate-800 rounded-xl p-2">
-                        <div className="grid grid-cols-10 gap-2">
-                            {Array.from({length:90},(_,i)=>i+1).map(n => (
-                                <button key={n} 
-                                    onClick={()=> playSound(history.includes(n) ? "Correcto" : "No ha salido")}
-                                    className={`aspect-square font-bold rounded ${history.includes(n)?'bg-green-600 text-white':'bg-slate-900 text-slate-600'}`}>
-                                    {n}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 mt-4 h-20">
-                        <button onClick={()=>{setChecking(false); playSound("Línea correcta")}} className="bg-blue-600 rounded-xl font-black">¡LÍNEA!</button>
-                        <button onClick={()=>{setChecking(false); playSound("Bingo correcto")}} className="bg-pink-600 rounded-xl font-black">¡BINGO!</button>
-                    </div>
-                </div>
-            );
-
-            return (
-                <div className="flex flex-col h-screen bg-slate-900 p-4 max-w-2xl mx-auto">
-                    <div className="flex justify-between items-center mb-6">
-                        <button onClick={()=>{setAuto(false);onBack()}} className="p-2 bg-slate-800 rounded-full"><Icon name="arrowLeft"/></button>
-                        <div className="bg-slate-800 px-4 py-1 rounded-full text-blue-300 font-mono font-bold">{history.length} / 90</div>
-                        <button onClick={()=>{if(confirm("Reiniciar?")){setHistory([]);setCurrent(null);setAuto(false)}}} className="p-2 text-red-500"><Icon name="refresh"/></button>
-                    </div>
-
-                    <div className="flex-1 flex flex-col items-center">
-                        <div onClick={()=>current && playSound(`${current}`)} className="w-64 h-64 bg-slate-800 rounded-full border-8 border-slate-700 flex items-center justify-center mb-8 shadow-2xl relative cursor-pointer active:scale-95 transition-transform">
-                            <span className="text-[9rem] font-black leading-none">{current || "--"}</span>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4 w-full px-4">
-                            <button onClick={()=>setAuto(!auto)} className={`p-6 rounded-xl font-black text-xl flex items-center justify-center gap-2 ${auto?'bg-amber-500 text-black animate-pulse':'bg-slate-700'}`}>
-                                {auto ? <><Icon name="pause"/> PAUSA</> : <><Icon name="play"/> AUTO</>}
-                            </button>
-                            <button onClick={draw} disabled={auto} className="p-6 bg-blue-600 rounded-xl font-black text-xl shadow-lg hover:bg-blue-500 active:translate-y-1">
-                                SACAR
-                            </button>
-                        </div>
-
-                        <button onClick={()=>{setAuto(false); setChecking(true); playSound("Comprobar")}} className="mt-6 w-full py-4 bg-pink-600 rounded-xl font-black flex items-center justify-center gap-2 tracking-widest shadow-lg">
-                            <Icon name="ticket"/> ¡COMPROBAR!
-                        </button>
-                    </div>
-
-                    <div className="mt-6 h-24 bg-slate-800/50 rounded-lg p-2 overflow-y-auto">
-                        <div className="flex flex-wrap gap-1 justify-center">
-                            {history.slice(0).reverse().map(n => (
-                                <span key={n} className="w-8 h-8 flex items-center justify-center bg-blue-600 rounded font-bold text-sm">{n}</span>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        // --- MODO FÁBRICA (Para imprimir) ---
+        // --- MODO FÁBRICA ---
         const Factory = ({ onBack }) => {
             const [grid, setGrid] = useState(generateCard());
             const [c, setC] = useState(1);
             const ref = useRef();
-
             const download = async () => {
                 const cvs = await html2canvas(ref.current, {scale:2, backgroundColor:null});
                 const l = document.createElement('a'); l.download=`Carton_${c}.png`; l.href=cvs.toDataURL(); l.click();
                 setTimeout(()=>{setGrid(generateCard()); setC(c+1)}, 200);
             };
-
             return (
                 <div className="flex flex-col items-center min-h-screen bg-slate-900 p-4 border-t-8 border-green-500">
                     <button onClick={onBack} className="self-start mb-4 p-2 bg-slate-800 rounded-full"><Icon name="arrowLeft"/></button>
@@ -370,38 +138,142 @@
                             </div>
                         </div>
                     </div>
-                    <button onClick={download} className="fixed bottom-10 px-8 py-4 bg-green-600 rounded-xl font-bold shadow-xl flex gap-2"><Icon name="download"/> DESCARGAR Y SIGUIENTE</button>
+                    <button onClick={download} className="fixed bottom-10 px-8 py-4 bg-green-600 rounded-xl font-bold shadow-xl flex gap-2">DESCARGAR Y SIGUIENTE</button>
                 </div>
             );
         };
 
-        // --- MENÚ PRINCIPAL ---
+        // --- MODO BOMBO (CALLER) ---
+        const Caller = ({ onBack }) => {
+            const [history, setHistory] = useState([]);
+            const [current, setCurrent] = useState(null);
+            const [auto, setAuto] = useState(false);
+            const [audioOn, setAudioOn] = useState(false);
+            const [checking, setChecking] = useState(false);
+            const timerRef = useRef(null);
+
+            const playSound = (text) => {
+                if(!window.speechSynthesis) return;
+                try { const Ctx = window.AudioContext || window.webkitAudioContext; if(Ctx){const ctx=new Ctx();const o=ctx.createOscillator();o.connect(ctx.destination);o.start();o.stop(ctx.currentTime+0.01);} } catch(e){}
+                window.speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance(text); u.lang = 'es-ES'; u.rate = 1;
+                window.speechSynthesis.speak(u);
+            };
+
+            const draw = () => {
+                if(history.length >= 90) return setAuto(false);
+                let n; do { n = Math.floor(Math.random()*90)+1; } while(history.includes(n));
+                setHistory(p => [n, ...p]); setCurrent(n); playSound(`${n}`);
+            };
+
+            useEffect(() => { if(auto && !checking) timerRef.current = setInterval(draw, 4000); else clearInterval(timerRef.current); return () => clearInterval(timerRef.current); }, [auto, checking, history]);
+
+            if(!audioOn) return (
+                <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 p-6 text-center">
+                    <div className="mb-6 text-pink-500 animate-bounce"><Icon name="volume"/></div>
+                    <h1 className="text-3xl font-black mb-4">MODO TV / BOMBO</h1>
+                    <button onClick={()=>{setAudioOn(true); playSound("Conectado")}} className="w-full max-w-md py-5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-bold text-xl shadow-lg">CONECTAR SONIDO</button>
+                    <button onClick={onBack} className="mt-6 text-slate-500 underline">Volver</button>
+                </div>
+            );
+
+            if(checking) return (
+                <div className="flex flex-col h-screen bg-slate-900 p-4">
+                    <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-pink-500">COMPROBADOR</h2><button onClick={()=>{setChecking(false); playSound("Seguimos")}} className="bg-slate-800 px-4 py-2 rounded font-bold">VOLVER</button></div>
+                    <div className="flex-1 overflow-y-auto bg-slate-800 rounded-xl p-2"><div className="grid grid-cols-10 gap-2">{Array.from({length:90},(_,i)=>i+1).map(n => (<button key={n} onClick={()=> playSound(history.includes(n) ? "Correcto" : "No ha salido")} className={`aspect-square font-bold rounded ${history.includes(n)?'bg-green-600 text-white':'bg-slate-900 text-slate-600'}`}>{n}</button>))}</div></div>
+                    <div className="grid grid-cols-2 gap-4 mt-4 h-20"><button onClick={()=>{setChecking(false); playSound("Línea correcta")}} className="bg-blue-600 rounded-xl font-black">¡LÍNEA!</button><button onClick={()=>{setChecking(false); playSound("Bingo correcto")}} className="bg-pink-600 rounded-xl font-black">¡BINGO!</button></div>
+                </div>
+            );
+
+            return (
+                <div className="flex flex-col md:flex-row h-screen bg-slate-900 overflow-hidden">
+                    {/* COLUMNA IZQUIERDA: BOLA GIGANTE (Móvil y TV) */}
+                    <div className="flex-1 flex flex-col items-center justify-center p-4 relative border-b md:border-b-0 md:border-r border-slate-700">
+                         {/* Header Movil */}
+                        <div className="absolute top-4 left-4 md:hidden"><button onClick={()=>{setAuto(false);onBack()}} className="p-2 bg-slate-800 rounded-full"><Icon name="arrowLeft"/></button></div>
+                        <div className="absolute top-4 right-4 md:hidden bg-slate-800 px-3 py-1 rounded-full text-blue-300 font-bold">{history.length}/90</div>
+
+                        {/* BOLA */}
+                        <div onClick={()=>current && playSound(`${current}`)} className="w-56 h-56 sm:w-72 sm:h-72 md:w-[40vh] md:h-[40vh] bg-slate-800 rounded-full border-[10px] sm:border-[16px] border-slate-700 flex items-center justify-center shadow-2xl cursor-pointer active:scale-95 transition-transform">
+                            <span className="text-[8rem] sm:text-[10rem] md:text-[15rem] font-black leading-none">{current || "--"}</span>
+                        </div>
+                        <div className="mt-4 text-slate-500 text-sm md:text-xl font-bold">ÚLTIMO NÚMERO</div>
+
+                        {/* Controles Móvil (Ocultos en TV/PC) */}
+                        <div className="flex md:hidden gap-4 w-full mt-6">
+                            <button onClick={()=>setAuto(!auto)} className={`flex-1 p-4 rounded-xl font-black ${auto?'bg-amber-500 text-black':'bg-slate-700'}`}>{auto?"PAUSA":"AUTO"}</button>
+                            <button onClick={draw} disabled={auto} className="flex-1 p-4 bg-blue-600 rounded-xl font-black shadow-lg">SACAR</button>
+                        </div>
+                        <button onClick={()=>{setAuto(false);setChecking(true)}} className="md:hidden mt-4 w-full p-3 bg-pink-600 rounded-xl font-black">COMPROBAR</button>
+                    </div>
+
+                    {/* COLUMNA DERECHA: PANEL TV (Visible solo en apaisado) */}
+                    <div className="hidden md:flex md:flex-[1.5] flex-col bg-slate-950 p-4">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">PANEL DE CONTROL</h2>
+                            <div className="flex gap-4">
+                                <button onClick={()=>{setAuto(false);onBack()}} className="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 font-bold">SALIR</button>
+                                <button onClick={()=>{if(confirm("Reiniciar?")){setHistory([]);setCurrent(null);setAuto(false)}}} className="px-4 py-2 bg-red-900/50 text-red-400 rounded-lg hover:bg-red-900 font-bold">REINICIAR</button>
+                            </div>
+                        </div>
+
+                        {/* GRID 90 NUMEROS */}
+                        <div className="flex-1 bg-slate-900 rounded-2xl p-2 border border-slate-800 shadow-inner">
+                            <div className="grid grid-cols-10 gap-1 h-full content-center">
+                                {Array.from({length:90},(_,i)=>i+1).map(n => (
+                                    <div key={n} className={`flex items-center justify-center rounded font-bold text-lg transition-all duration-300 ${history.includes(n)?'bg-green-500 text-white shadow-[0_0_10px_rgba(34,197,94,0.5)] scale-105':'bg-slate-800 text-slate-600'}`}>
+                                        {n}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* CONTROLES TV (Abajo) */}
+                        <div className="mt-4 flex gap-4 h-20">
+                            <div className="flex-1 bg-slate-900 rounded-2xl flex items-center justify-center gap-6 border border-slate-800">
+                                <button onClick={()=>setAuto(!auto)} className={`px-6 py-3 rounded-xl font-black text-xl flex items-center gap-2 transition-all ${auto?'bg-amber-500 text-black shadow-[0_0_20px_rgba(245,158,11,0.4)]':'bg-slate-700 hover:bg-slate-600'}`}>
+                                    {auto ? <><Icon name="pause"/> PAUSAR</> : <><Icon name="play"/> AUTO</>}
+                                </button>
+                                <button onClick={draw} disabled={auto} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-black text-xl shadow-lg active:translate-y-1">
+                                    SACAR BOLA
+                                </button>
+                            </div>
+                            <button onClick={()=>{setAuto(false);setChecking(true)}} className="w-40 bg-pink-600 hover:bg-pink-500 rounded-2xl font-black text-lg flex flex-col items-center justify-center shadow-lg animate-pulse">
+                                <Icon name="ticket"/> COMPROBAR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- MENÚ ---
         const Menu = ({ setMode }) => (
             <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-blue-900 to-slate-900 p-4 text-center">
-                <h1 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-indigo-500 mb-10 drop-shadow-lg">BINGO</h1>
-                <div className="w-full max-w-sm flex flex-col gap-4">
-                    <button onClick={()=>setMode('player')} className="p-6 bg-slate-800 rounded-2xl border border-pink-500/50 flex items-center gap-4 hover:bg-slate-750 transition-transform active:scale-95 shadow-xl">
-                        <div className="bg-pink-600 p-3 rounded-full"><Icon name="ticket"/></div>
-                        <div className="text-left"><p className="font-black text-xl">JUGAR</p><p className="text-xs text-slate-400">Cartón Interactivo</p></div>
+                <h1 className="text-7xl sm:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-indigo-500 mb-8 drop-shadow-2xl">BINGO</h1>
+                <div className="flex flex-col sm:flex-row gap-6 w-full max-w-4xl justify-center">
+                    <button onClick={()=>setMode('player')} className="flex-1 p-8 bg-slate-800 rounded-3xl border-2 border-slate-700 hover:border-pink-500 transition-all hover:-translate-y-2 shadow-2xl group">
+                        <div className="bg-pink-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icon name="finger"/></div>
+                        <h2 className="text-2xl font-black mb-2">SOY JUGADOR</h2>
+                        <p className="text-slate-400">Cartón en el móvil</p>
                     </button>
-                    <button onClick={()=>setMode('caller')} className="p-6 bg-slate-800 rounded-2xl border border-blue-500/50 flex items-center gap-4 hover:bg-slate-750 transition-transform active:scale-95 shadow-xl">
-                        <div className="bg-blue-600 p-3 rounded-full"><Icon name="volume"/></div>
-                        <div className="text-left"><p className="font-black text-xl">BOMBO</p><p className="text-xs text-slate-400">Cantar números</p></div>
-                    </button>
-                    <button onClick={()=>setMode('factory')} className="mt-4 p-3 flex justify-center items-center gap-2 text-slate-500 hover:text-white">
-                        <Icon name="layers"/> Fábrica de Imágenes
+                    <button onClick={()=>setMode('caller')} className="flex-1 p-8 bg-slate-800 rounded-3xl border-2 border-slate-700 hover:border-blue-500 transition-all hover:-translate-y-2 shadow-2xl group">
+                        <div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icon name="tv"/></div>
+                        <h2 className="text-2xl font-black mb-2">MODO TV</h2>
+                        <p className="text-slate-400">Bombo y Pantalla</p>
                     </button>
                 </div>
+                <div className="mt-12 text-slate-500 text-sm">Bingo Fiesta V6.0 (Corregido)</div>
+                <button onClick={()=>{setMode('factory')}} className="mt-4 text-xs text-slate-600 hover:text-white">Imprimir Cartones</button>
             </div>
         );
 
-        // --- APP ROOT ---
         const App = () => {
             const [mode, setMode] = useState('menu');
             return mode === 'menu' ? <Menu setMode={setMode}/> :
                    mode === 'player' ? <Player onBack={()=>setMode('menu')}/> :
-                   mode === 'caller' ? <Caller onBack={()=>setMode('menu')}/> :
-                   <Factory onBack={()=>setMode('menu')}/>;
+                   mode === 'factory' ? <Factory onBack={()=>setMode('menu')}/> :
+                   <Caller onBack={()=>setMode('menu')}/>;
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
