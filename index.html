@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bingo Fiesta V10</title>
+    <title>Bingo Fiesta V11</title>
     
     <!-- LIBRERÍAS -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -53,7 +53,6 @@
             return <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icons[name] || <circle cx="12" cy="12" r="10"/>}</svg>;
         };
 
-        // --- GENERADOR ---
         const generateCard = () => {
             const ranges = [[1,9], [10,19], [20,29], [30,39], [40,49], [50,59], [60,69], [70,79], [80,90]];
             let grid, attempts = 0;
@@ -68,15 +67,12 @@
             return grid;
         };
 
-        // --- MODO JUGADOR MULTI-CARTÓN ---
         const Player = ({ onBack }) => {
-            // Estado principal: Array de objetos { id, grid, marks (Set convertido a Array para storage) }
             const [cards, setCards] = useState(() => {
                 try {
-                    const saved = localStorage.getItem('bingo_v10_cards');
+                    const saved = localStorage.getItem('bingo_v11_cards');
                     if (saved) {
                         const parsed = JSON.parse(saved);
-                        // Recuperar Sets desde Arrays
                         return parsed.map(c => ({ ...c, marks: new Set(c.marks) }));
                     }
                     return [{ id: 1, grid: generateCard(), marks: new Set() }];
@@ -84,16 +80,14 @@
             });
 
             const [target, setTarget] = useState('line'); 
-            const [alert, setAlert] = useState(null); // Texto de alerta
+            const [alert, setAlert] = useState(null);
 
-            // Guardar en Storage (Convertir Sets a Arrays)
             useEffect(() => {
                 const toSave = cards.map(c => ({ ...c, marks: Array.from(c.marks) }));
-                localStorage.setItem('bingo_v10_cards', JSON.stringify(toSave));
+                localStorage.setItem('bingo_v11_cards', JSON.stringify(toSave));
                 checkAllCards();
             }, [cards, target]);
 
-            // Comprobar victorias en TODOS los cartones
             const checkAllCards = () => {
                 let highestWin = null;
                 let winningCardId = null;
@@ -120,20 +114,35 @@
                 }
             };
 
-            const toggleMark = (cardId, num) => {
+            // --- LÓGICA DE MARCADO SIMULTÁNEO ---
+            const toggleMark = (clickedCardId, num) => {
                 if(!num) return;
-                setCards(prevCards => prevCards.map(c => {
-                    if (c.id === cardId) {
+                
+                setCards(prevCards => {
+                    // 1. Averiguar si vamos a marcar o desmarcar
+                    // Buscamos el cartón donde se hizo click para ver el estado actual
+                    const clickedCard = prevCards.find(c => c.id === clickedCardId);
+                    const isMarked = clickedCard.marks.has(num);
+                    const shouldAdd = !isMarked; // Si estaba marcado, lo quitamos. Si no, lo ponemos.
+
+                    // 2. Aplicar ese cambio a TODOS los cartones
+                    return prevCards.map(c => {
                         const newMarks = new Set(c.marks);
-                        if (newMarks.has(num)) newMarks.delete(num); else newMarks.add(num);
+                        if (shouldAdd) {
+                            newMarks.add(num);
+                        } else {
+                            newMarks.delete(num);
+                        }
                         return { ...c, marks: newMarks };
-                    }
-                    return c;
-                }));
+                    });
+                });
             };
 
             const addCard = () => {
                 if (cards.length >= 4) return alert("Máximo 4 cartones");
+                // Al añadir cartón, copiamos las marcas de los otros para sincronizar si ya han salido bolas
+                // O mejor, empezamos limpio y que marquen lo que ha salido.
+                // Para simplificar y evitar trampas, empezamos limpio.
                 setCards([...cards, { id: cards.length + 1, grid: generateCard(), marks: new Set() }]);
             };
 
@@ -145,7 +154,6 @@
 
             const startNewGame = () => {
                 if(confirm("¿Empezar partida nueva? (Se resetearán todos tus cartones)")) {
-                    // Regenerar grids para los cartones existentes
                     setCards(prev => prev.map(c => ({ ...c, grid: generateCard(), marks: new Set() })));
                     setTarget('line');
                     setAlert(null);
@@ -205,7 +213,6 @@
             );
         };
 
-        // --- MODO FÁBRICA ---
         const Factory = ({ onBack }) => {
             const [grid, setGrid] = useState(generateCard());
             const [c, setC] = useState(1);
@@ -232,7 +239,6 @@
             );
         };
 
-        // --- MODO BOMBO (CALLER) ---
         const Caller = ({ onBack }) => {
             const [history, setHistory] = useState([]);
             const [current, setCurrent] = useState(null);
@@ -330,7 +336,7 @@
                         <p className="text-slate-400">Bombo y Pantalla</p>
                     </button>
                 </div>
-                <div className="hidden sm:block mt-12 text-slate-500 text-sm shrink-0">Bingo Fiesta V10.0</div>
+                <div className="hidden sm:block mt-12 text-slate-500 text-sm shrink-0">Bingo Fiesta V11.0</div>
                 <button onClick={()=>{setMode('factory')}} className="mt-8 text-xs text-slate-600 hover:text-white flex items-center justify-center gap-2 shrink-0"><Icon name="layers"/> Imprimir Cartones</button>
             </div>
         );
