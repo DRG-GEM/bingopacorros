@@ -3,55 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bingo Master V17</title>
+    <title>Bingo Master V18</title>
     
-    <!-- React y Babel -->
+    <!-- CORE -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- Estilos -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Utilidades -->
+    <!-- EXTRAS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    
-    <!-- QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
     <style>
-        html, body, #root { height: 100%; width: 100%; overflow: hidden; margin: 0; padding: 0; background-color: #0f172a; color: white; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+        html, body, #root { height: 100%; width: 100%; overflow: hidden; margin: 0; padding: 0; background-color: #0f172a; color: white; touch-action: manipulation; user-select: none; }
         .scroller { overflow-y: auto; scrollbar-width: thin; scrollbar-color: #475569 #0f172a; }
         .scroller::-webkit-scrollbar { width: 6px; }
-        .scroller::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
         .win-pulse { animation: winPulse 2s infinite; }
         @keyframes winPulse { 0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(234, 179, 8, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
+        /* Fix para el video del escáner */
+        #reader video { object-fit: cover; width: 100% !important; height: 100% !important; border-radius: 1rem; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <!-- Pantalla de Carga / Error -->
-    <div id="loader" style="position:fixed;top:0;left:0;right:0;bottom:0;background:#0f172a;color:white;display:flex;align-items:center;justify-content:center;z-index:9999;">
-        Cargando Bingo...
-    </div>
-
     <script>
-        // Ocultar loader cuando React cargue
-        window.onload = function() { setTimeout(() => { const l = document.getElementById('loader'); if(l) l.style.display = 'none'; }, 1000); };
-        window.onerror = function(msg, url, line) {
-            document.getElementById('loader').innerHTML = `<div style="text-align:center;color:#ef4444;padding:20px;"><h2>ERROR</h2><p>${msg}</p><p>Línea: ${line}</p><button onclick="location.reload()" style="background:white;color:black;padding:10px;margin-top:10px;">RECARGAR</button></div>`;
+        window.onerror = function(message) {
+            document.body.innerHTML = '<div style="padding:20px;text-align:center;color:red;margin-top:50px;"><h2>Error</h2><p>'+message+'</p><button onclick="location.reload()" style="padding:10px;margin-top:20px;">RECARGAR</button></div>';
         };
     </script>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- ICONOS SEGUROS (Sin Fragmentos) ---
         const Icon = ({ name }) => {
-            // Usamos <g> en lugar de <> para máxima compatibilidad
             const icons = {
                 arrowLeft: <path d="M19 12H5M12 19l-7-7 7-7" />,
                 volume: <path d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07" />,
@@ -73,7 +61,6 @@
             return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icons[name] || <circle cx="12" cy="12" r="10"/>}</svg>;
         };
 
-        // --- LÓGICA DE JUEGO ---
         const generateCard = () => {
             const ranges = [[1,9], [10,19], [20,29], [30,39], [40,49], [50,59], [60,69], [70,79], [80,90]];
             let grid, attempts=0;
@@ -88,37 +75,35 @@
             return grid;
         };
 
-        // --- COMPONENTE QR (JUGADOR) ---
+        // --- PLAYER QR ---
         const PlayerQR = ({ cards, onClose }) => {
             const qrRef = useRef(null);
             useEffect(() => {
-                if(!window.QRCode) { alert("Librería QR no cargada"); return; }
                 const data = cards.map(c => c.grid);
                 if(qrRef.current) {
                     qrRef.current.innerHTML = "";
-                    new QRCode(qrRef.current, { text: JSON.stringify(data), width: 256, height: 256 });
+                    new QRCode(qrRef.current, { text: JSON.stringify(data), width: 300, height: 300, colorDark : "#000000", colorLight : "#ffffff" });
                 }
             }, []);
             return (
                 <div className="fixed inset-0 bg-slate-900/95 z-50 flex flex-col items-center justify-center p-4">
-                    <h2 className="text-2xl font-bold mb-4 text-white">VALIDADOR</h2>
+                    <h2 className="text-2xl font-bold mb-4 text-white">TU CÓDIGO</h2>
                     <div className="bg-white p-4 rounded-xl shadow-2xl" ref={qrRef}></div>
                     <button onClick={onClose} className="mt-8 px-10 py-4 bg-red-600 rounded-xl text-white font-black">CERRAR</button>
                 </div>
             );
         };
 
-        // --- MODO JUGADOR ---
         const Player = ({ onBack }) => {
             const [cards, setCards] = useState(() => {
-                try { return JSON.parse(localStorage.getItem('b_v17_c')).map(c=>({...c, marks:new Set(c.marks)})) || [{id:1, grid:generateCard(), marks:new Set()}] } 
+                try { return JSON.parse(localStorage.getItem('b_v18_c')).map(c=>({...c, marks:new Set(c.marks)})) || [{id:1, grid:generateCard(), marks:new Set()}] } 
                 catch { return [{id:1, grid:generateCard(), marks:new Set()}] }
             });
             const [target, setTarget] = useState('line'); 
             const [alert, setAlert] = useState(null);
             const [showQR, setShowQR] = useState(false);
 
-            useEffect(() => { localStorage.setItem('b_v17_c', JSON.stringify(cards.map(c=>({...c, marks:Array.from(c.marks)})))); checkAllCards(); }, [cards, target]);
+            useEffect(() => { localStorage.setItem('b_v18_c', JSON.stringify(cards.map(c=>({...c, marks:Array.from(c.marks)})))); checkAllCards(); }, [cards, target]);
 
             const checkAllCards = () => {
                 let highestWin = null;
@@ -156,7 +141,7 @@
                             <button onClick={addCard} disabled={cards.length>=4} className="p-2 bg-blue-600 rounded-lg text-white shadow-lg"><Icon name="plus"/></button>
                         </div>
                     </div>
-                    {alert && <div className="shrink-0 w-full py-2 text-center font-black animate-pulse bg-green-600 text-white">¡¡ TIENES {alert} !!</div>}
+                    {alert && <div onClick={()=>setShowQR(true)} className={`cursor-pointer shrink-0 w-full py-3 text-center font-black text-xl animate-pulse shadow-lg z-20 ${alert.includes('BINGO')?'bg-yellow-500 text-black':'bg-green-600 text-white'}`}>¡¡ TIENES {alert} !!</div>}
                     <div className="flex-1 scroller p-2 flex flex-col items-center gap-4 pb-20">
                         {cards.map(card => (
                             <div key={card.id} className={`w-full max-w-3xl bg-[#fff9e6] border-4 border-amber-800 rounded-lg p-1 shadow-2xl relative select-none transition-transform ${alert && alert.includes(card.id) ? 'scale-105 ring-4 ring-yellow-400' : ''}`}>
@@ -186,19 +171,23 @@
         const AdminScanner = ({ onVerify, onClose }) => {
             const [errorMsg, setErrorMsg] = useState(null);
             useEffect(() => {
-                if(!window.Html5Qrcode) { setErrorMsg("Librería QR no cargada. Usa HTTPS."); return; }
                 const scanner = new Html5Qrcode("reader");
-                scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, 
-                    (txt) => { try { onVerify(JSON.parse(txt)); scanner.stop().then(()=>scanner.clear()); } catch(e){ setErrorMsg("QR Inválido"); } },
+                // Configuración para usar CÁMARA TRASERA y PANTALLA COMPLETA
+                const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
+                scanner.start({ facingMode: "environment" }, config, 
+                    (txt) => { try { onVerify(JSON.parse(txt)); scanner.stop().then(()=>scanner.clear()); } catch(e){} },
                     () => {}
-                ).catch(() => setErrorMsg("No se puede acceder a la cámara. Asegúrate de estar en HTTPS (Netlify)"));
+                ).catch(() => setErrorMsg("Error cámara. Usa HTTPS."));
                 return () => { try{ if(scanner.isScanning) scanner.stop().then(()=>scanner.clear()); }catch(e){} };
             }, []);
             return (
-                <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-4">
-                    <h2 className="text-white font-bold mb-4 text-xl">ESCANEA AL GANADOR</h2>
-                    {errorMsg ? <div className="bg-red-900 p-4 text-white text-center rounded">{errorMsg}</div> : <div id="reader" className="w-full max-w-sm bg-white rounded-lg h-64 overflow-hidden border-2 border-blue-500"></div>}
-                    <button onClick={onClose} className="mt-8 px-6 py-3 bg-red-600 rounded-lg text-white font-bold">CANCELAR</button>
+                <div className="fixed inset-0 bg-black z-50 flex flex-col p-0">
+                    <div id="reader" className="w-full h-full bg-black"></div>
+                    {errorMsg && <div className="absolute top-10 left-4 right-4 bg-red-600 text-white p-4 rounded text-center font-bold z-50">{errorMsg}</div>}
+                    <div className="absolute bottom-10 left-0 right-0 flex justify-center z-50">
+                        <button onClick={onClose} className="px-8 py-4 bg-red-600 rounded-full text-white font-black text-xl shadow-2xl border-4 border-white">CANCELAR</button>
+                    </div>
+                    <div className="absolute top-0 left-0 right-0 p-4 bg-black/50 text-white text-center font-bold z-40 pointer-events-none">APUNTA AL CÓDIGO QR</div>
                 </div>
             );
         };
