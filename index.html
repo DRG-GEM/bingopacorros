@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bingo Master V18</title>
+    <title>Bingo Master V20</title>
     
     <!-- CORE -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -12,7 +12,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- EXTRAS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -51,7 +50,6 @@
                 ticket: <path d="M3 7v2a3 3 0 0 1 3 3 3 3 0 0 1-3 3v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2a3 3 0 0 1-3-3 3 3 0 0 1 3-3V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z" />,
                 tv: <g><rect x="2" y="7" width="20" height="15" rx="2" ry="2" /><polyline points="17 2 12 7 7 2" /></g>,
                 finger: <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />,
-                layers: <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />,
                 plus: <path d="M12 5v14M5 12h14" />,
                 x: <path d="M18 6L6 18M6 6l12 12" />,
                 qr: <path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h6v6h-6zM9 3v6M15 9h6M9 15v6M15 15v6M3 9h6M15 3v6M21 9v6M9 21h6" />,
@@ -96,14 +94,14 @@
 
         const Player = ({ onBack }) => {
             const [cards, setCards] = useState(() => {
-                try { return JSON.parse(localStorage.getItem('b_v18_c')).map(c=>({...c, marks:new Set(c.marks)})) || [{id:1, grid:generateCard(), marks:new Set()}] } 
+                try { return JSON.parse(localStorage.getItem('b_v19_c')).map(c=>({...c, marks:new Set(c.marks)})) || [{id:1, grid:generateCard(), marks:new Set()}] } 
                 catch { return [{id:1, grid:generateCard(), marks:new Set()}] }
             });
             const [target, setTarget] = useState('line'); 
             const [alert, setAlert] = useState(null);
             const [showQR, setShowQR] = useState(false);
 
-            useEffect(() => { localStorage.setItem('b_v18_c', JSON.stringify(cards.map(c=>({...c, marks:Array.from(c.marks)})))); checkAllCards(); }, [cards, target]);
+            useEffect(() => { localStorage.setItem('b_v19_c', JSON.stringify(cards.map(c=>({...c, marks:Array.from(c.marks)})))); checkAllCards(); }, [cards, target]);
 
             const checkAllCards = () => {
                 let highestWin = null;
@@ -172,10 +170,9 @@
             const [errorMsg, setErrorMsg] = useState(null);
             useEffect(() => {
                 const scanner = new Html5Qrcode("reader");
-                // Configuración para usar CÁMARA TRASERA y PANTALLA COMPLETA
                 const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
                 scanner.start({ facingMode: "environment" }, config, 
-                    (txt) => { try { onVerify(JSON.parse(txt)); scanner.stop().then(()=>scanner.clear()); } catch(e){} },
+                    (txt) => { try { onVerify(JSON.parse(txt)); scanner.stop().then(()=>scanner.clear()); } catch(e){ setErrorMsg("QR no válido"); } },
                     () => {}
                 ).catch(() => setErrorMsg("Error cámara. Usa HTTPS."));
                 return () => { try{ if(scanner.isScanning) scanner.stop().then(()=>scanner.clear()); }catch(e){} };
@@ -284,13 +281,20 @@
                     <button onClick={()=>setMode('player')} className="flex-1 p-8 bg-slate-800 rounded-3xl border-2 border-slate-700 hover:border-pink-500 transition-all hover:-translate-y-2 shadow-2xl group"><div className="bg-pink-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icon name="finger"/></div><h2 className="text-2xl font-black mb-2">SOY JUGADOR</h2><p className="text-slate-400">Cartón + QR</p></button>
                     <button onClick={()=>setMode('caller')} className="flex-1 p-8 bg-slate-800 rounded-3xl border-2 border-slate-700 hover:border-blue-500 transition-all hover:-translate-y-2 shadow-2xl group"><div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icon name="tv"/></div><h2 className="text-2xl font-black mb-2">MODO TV</h2><p className="text-slate-400">Bombo + Escáner</p></button>
                 </div>
-                <button onClick={()=>{setMode('factory')}} className="mt-8 text-xs text-slate-600 hover:text-white flex items-center justify-center gap-2 shrink-0"><Icon name="layers"/> Imprimir Cartones</button>
+                
+                {/* PIE DE PÁGINA ACTUALIZADO */}
+                <div className="mt-12 flex flex-col items-center gap-2 text-slate-500 text-sm shrink-0 opacity-80 hover:opacity-100 transition-opacity">
+                    <p>Creado por <span className="font-bold text-slate-400">Raúl Rubio</span></p>
+                    <a href="http://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
+                        <img alt="Licencia Creative Commons" style={{borderWidth:0}} src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+                    </a>
+                </div>
             </div>
         );
 
         const App = () => {
             const [mode, setMode] = useState('menu');
-            return mode === 'menu' ? <Menu setMode={setMode}/> : mode === 'player' ? <Player onBack={()=>setMode('menu')}/> : mode === 'factory' ? <Factory onBack={()=>setMode('menu')}/> : <Caller onBack={()=>setMode('menu')}/>;
+            return mode === 'menu' ? <Menu setMode={setMode}/> : mode === 'player' ? <Player onBack={()=>setMode('menu')}/> : <Caller onBack={()=>setMode('menu')}/>;
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -298,6 +302,3 @@
     </script>
 </body>
 </html>
-
-
-
