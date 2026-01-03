@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bingo Master V20</title>
+
+    <!-- Configuración PWA y Mobile -->
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="BingoPacorros">
+    
+    <!-- ICONO PERSONALIZADO -->
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/DRG-GEM/bingopacorros/main/BingoDRG.png">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/DRG-GEM/bingopacorros/main/BingoDRG.png">
+
+    <!-- Manifiesto Web App (Codificado para asegurar compatibilidad PWA) -->
+    <link rel="manifest" id="manifest-placeholder">
+    
+    <!-- CORE -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- EXTRAS -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+    <style>
+        html, body, #root { height: 100%; width: 100%; overflow: hidden; margin: 0; padding: 0; background-color: #0f172a; color: white; touch-action: manipulation; user-select: none; }
+        .scroller { overflow-y: auto; scrollbar-width: thin; scrollbar-color: #475569 #0f172a; }
+        .scroller::-webkit-scrollbar { width: 6px; }
+        .win-pulse { animation: winPulse 2s infinite; }
+        @keyframes winPulse { 0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(234, 179, 8, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
+        /* Fix para el video del escáner */
+        #reader video { object-fit: cover; width: 100% !important; height: 100% !important; border-radius: 1rem; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script>
+        window.onerror = function(message) {
+            document.body.innerHTML = '<div style="padding:20px;text-align:center;color:red;margin-top:50px;"><h2>Error</h2><p>'+message+'</p><button onclick="location.reload()" style="padding:10px;margin-top:20px;">RECARGAR</button></div>';
+        };
+    </script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const Icon = ({ name }) => {
+            const icons = {
+                arrowLeft: <path d="M19 12H5M12 19l-7-7 7-7" />,
+                volume: <path d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07" />,
+                play: <polygon points="5 3 19 12 5 21 5 3" />,
+                pause: <path d="M6 4h4v16H6zm8 0h4v16h-4z" />,
+                refresh: <path d="M23 4v6h-6M1 20v-6h6" />,
+                trash: <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />,
+                check: <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />,
+                ticket: <path d="M3 7v2a3 3 0 0 1 3 3 3 3 0 0 1-3 3v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2a3 3 0 0 1-3-3 3 3 0 0 1 3-3V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z" />,
+                tv: <g><rect x="2" y="7" width="20" height="15" rx="2" ry="2" /><polyline points="17 2 12 7 7 2" /></g>,
+                finger: <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />,
+                plus: <path d="M12 5v14M5 12h14" />,
+                x: <path d="M18 6L6 18M6 6l12 12" />,
+                qr: <path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h6v6h-6zM9 3v6M15 9h6M9 15v6M15 15v6M3 9h6M15 3v6M21 9v6M9 21h6" />,
+                camera: <g><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></g>,
+                eye: <g><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></g>
+            };
+            return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icons[name] || <circle cx="12" cy="12" r="10"/>}</svg>;
+        };
+
+        const generateCard = () => {
+            const ranges = [[1,9], [10,19], [20,29], [30,39], [40,49], [50,59], [60,69], [70,79], [80,90]];
+            let grid, attempts=0;
+            while(attempts<2000){
+                grid=Array(3).fill(null).map(()=>Array(9).fill(null));
+                const rc=[0,0,0], cc=Array(9).fill(0);
+                for(let c=0;c<9;c++){let r;do{r=Math.floor(Math.random()*3)}while(rc[r]>=5);grid[r][c]="P";rc[r]++;cc[c]++;}
+                let rem=6;while(rem>0){let c=Math.floor(Math.random()*9);if(cc[c]<2){const vr=[0,1,2].filter(r=>grid[r][c]===null&&rc[r]<5);if(vr.length){const r=vr[Math.floor(Math.random()*vr.length)];grid[r][c]="P";rc[r]++;cc[c]++;rem--;}}}
+                for(let c=0;c<9;c++){const s=[];for(let r=0;r<3;r++)if(grid[r][c]==="P")s.push(r);const n=new Set();const[min,max]=ranges[c];while(n.size<s.length)n.add(Math.floor(Math.random()*(max-min+1))+min);const sorted=Array.from(n).sort((a,b)=>a-b);s.forEach((r,i)=>grid[r][c]=sorted[i]);}
+                if(rc.every(c=>c===5))return grid;attempts++;
+            }
+            return grid;
+        };
+
+        // --- PLAYER QR ---
+        const PlayerQR = ({ cards, onClose }) => {
+            const qrRef = useRef(null);
+            useEffect(() => {
+                const data = cards.map(c => c.grid);
+                if(qrRef.current) {
+                    qrRef.current.innerHTML = "";
+                    new QRCode(qrRef.current, { text: JSON.stringify(data), width: 300, height: 300, colorDark : "#000000", colorLight : "#ffffff" });
+                }
+            }, []);
+            return (
+                <div className="fixed inset-0 bg-slate-900/95 z-50 flex flex-col items-center justify-center p-4">
+                    <h2 className="text-2xl font-bold mb-4 text-white">TU CÓDIGO</h2>
+                    <div className="bg-white p-4 rounded-xl shadow-2xl" ref={qrRef}></div>
+                    <button onClick={onClose} className="mt-8 px-10 py-4 bg-red-600 rounded-xl text-white font-black">CERRAR</button>
+                </div>
+            );
+        };
+
+        const Player = ({ onBack }) => {
+            const [cards, setCards] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('b_v19_c')).map(c=>({...c, marks:new Set(c.marks)})) || [{id:1, grid:generateCard(), marks:new Set()}] } 
+                catch { return [{id:1, grid:generateCard(), marks:new Set()}] }
+            });
+            const [target, setTarget] = useState('line'); 
+            const [alert, setAlert] = useState(null);
+            const [showQR, setShowQR] = useState(false);
+
+            useEffect(() => { localStorage.setItem('b_v19_c', JSON.stringify(cards.map(c=>({...c, marks:Array.from(c.marks)})))); checkAllCards(); }, [cards, target]);
+
+            const checkAllCards = () => {
+                let highestWin = null;
+                cards.forEach(card => {
+                    let rows = 0; card.grid.forEach(row => { if(row.filter(n=>n).every(n=>card.marks.has(n))) rows++; });
+                    const total = Array.from(card.marks).filter(m => card.grid.some(r => r.includes(m))).length;
+                    if (total === 15) highestWin = 'BINGO';
+                    else if (target === 'line' && rows > 0 && total < 15 && highestWin !== 'BINGO') highestWin = 'LÍNEA';
+                });
+                if (highestWin && (alert === null || !alert.includes(highestWin))) {
+                    setAlert(highestWin); confetti({ particleCount: 300, spread: 70 });
+                } else if (!highestWin) setAlert(null);
+            };
+
+            const toggleMark = (cardId, num) => {
+                if(!num) return;
+                setCards(prev => prev.map(c => {
+                    const nm = new Set(c.marks);
+                    const isAdding = !prev.find(cd => cd.id === cardId).marks.has(num);
+                    if(isAdding) nm.add(num); else nm.delete(num);
+                    return { ...c, marks: nm };
+                }));
+            };
+
+            const addCard = () => { if (cards.length < 4) setCards([...cards, { id: cards.length + 1, grid: generateCard(), marks: new Set() }]); };
+            const startNewGame = () => { if(confirm("¿NUEVA PARTIDA?")) { setCards(prev => prev.map(c => ({ ...c, grid: generateCard(), marks: new Set() }))); setTarget('line'); setAlert(null); }};
+
+            return (
+                <div className="flex flex-col h-full bg-slate-900">
+                    <div className="shrink-0 bg-slate-800 shadow-xl p-2 flex justify-between items-center z-10">
+                        <button onClick={onBack} className="p-2 bg-slate-700 rounded-full"><Icon name="arrowLeft"/></button>
+                        <div className="text-center"><p className="text-[10px] text-slate-400 font-bold">OBJETIVO</p><p className={`text-lg font-black ${target==='line'?'text-green-400':'text-pink-500'}`}>{target==='line'?"LÍNEA":"BINGO"}</p></div>
+                        <div className="flex gap-2">
+                            <button onClick={()=>setShowQR(true)} className={`px-3 py-2 rounded-lg font-bold flex items-center gap-1 shadow-lg ${alert ? 'bg-purple-600 animate-pulse text-white' : 'bg-slate-700 text-slate-300'}`}><Icon name="qr" size={20}/> VALIDAR</button>
+                            <button onClick={addCard} disabled={cards.length>=4} className="p-2 bg-blue-600 rounded-lg text-white shadow-lg"><Icon name="plus"/></button>
+                        </div>
+                    </div>
+                    {alert && <div onClick={()=>setShowQR(true)} className={`cursor-pointer shrink-0 w-full py-3 text-center font-black text-xl animate-pulse shadow-lg z-20 ${alert.includes('BINGO')?'bg-yellow-500 text-black':'bg-green-600 text-white'}`}>¡¡ TIENES {alert} !!</div>}
+                    <div className="flex-1 scroller p-2 flex flex-col items-center gap-4 pb-20">
+                        {cards.map(card => (
+                            <div key={card.id} className={`w-full max-w-3xl bg-[#fff9e6] border-4 border-amber-800 rounded-lg p-1 shadow-2xl relative select-none transition-transform ${alert && alert.includes(card.id) ? 'scale-105 ring-4 ring-yellow-400' : ''}`}>
+                                <div className="flex justify-between items-end border-b-2 border-amber-900/20 pb-1 mb-1 px-2"><h1 className="text-xl font-black text-amber-900">CARTÓN {card.id}</h1>{cards.length > 1 && <button onClick={()=>setCards(cards.filter(c=>c.id!==card.id))} className="text-red-400 p-1"><Icon name="x" size={16}/></button>}</div>
+                                <div className="grid grid-rows-3 gap-0 border-2 border-amber-900 bg-amber-50">
+                                    {card.grid.map((row, i) => (
+                                        <div key={i} className={`grid grid-cols-9 divide-x-2 divide-amber-900 h-12 sm:h-16 ${i<2?'border-b-2 border-amber-900':''} ${row.filter(n=>n).every(n=>card.marks.has(n))?'bg-green-200':''}`}>
+                                            {row.map((n, j) => (
+                                                <div key={j} onClick={()=>toggleMark(card.id, n)} className="relative flex items-center justify-center cursor-pointer active:bg-amber-200">
+                                                    {n && <><span className={`text-lg sm:text-2xl font-bold z-10 ${card.marks.has(n)?'text-amber-900/30':'text-slate-900'}`}>{n}</span>{card.marks.has(n)&&<div className="absolute w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-red-600/70 border-2 border-red-800 pointer-events-none"></div>}</>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                        {target==='line' && <button onClick={()=>{if(confirm("¿Pasar a Bingo?"))setTarget('bingo')}} className="mt-4 w-full max-w-sm py-4 bg-slate-800 border-2 border-pink-500 rounded-xl flex justify-center gap-2 text-pink-400 font-bold shrink-0 shadow-lg">Ya hay Línea → Ir a Bingo</button>}
+                        <div className="mt-4 flex gap-4 w-full max-w-sm mb-4 shrink-0"><button onClick={()=>{if(confirm("¿Limpiar fichas?"))setCards(prev=>prev.map(c=>({...c, marks:new Set()})))}} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="trash"/> Limpiar</button><button onClick={startNewGame} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400 flex justify-center gap-2"><Icon name="refresh"/> Nueva</button></div>
+                    </div>
+                    {showQR && <PlayerQR cards={cards} onClose={()=>setShowQR(false)}/>}
+                </div>
+            );
+        };
+
+        // --- MODO ADMIN ---
+        const AdminScanner = ({ onVerify, onClose }) => {
+            const [errorMsg, setErrorMsg] = useState(null);
+            useEffect(() => {
+                const scanner = new Html5Qrcode("reader");
+                const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
+                scanner.start({ facingMode: "environment" }, config, 
+                    (txt) => { try { onVerify(JSON.parse(txt)); scanner.stop().then(()=>scanner.clear()); } catch(e){ setErrorMsg("QR no válido"); } },
+                    () => {}
+                ).catch(() => setErrorMsg("Error cámara. Usa HTTPS."));
+                return () => { try{ if(scanner.isScanning) scanner.stop().then(()=>scanner.clear()); }catch(e){} };
+            }, []);
+            return (
+                <div className="fixed inset-0 bg-black z-50 flex flex-col p-0">
+                    <div id="reader" className="w-full h-full bg-black"></div>
+                    {errorMsg && <div className="absolute top-10 left-4 right-4 bg-red-600 text-white p-4 rounded text-center font-bold z-50">{errorMsg}</div>}
+                    <div className="absolute bottom-10 left-0 right-0 flex justify-center z-50">
+                        <button onClick={onClose} className="px-8 py-4 bg-red-600 rounded-full text-white font-black text-xl shadow-2xl border-4 border-white">CANCELAR</button>
+                    </div>
+                    <div className="absolute top-0 left-0 right-0 p-4 bg-black/50 text-white text-center font-bold z-40 pointer-events-none">APUNTA AL CÓDIGO QR</div>
+                </div>
+            );
+        };
+
+        const ManualVerifyModal = ({ onClose }) => (
+            <div className="fixed inset-0 bg-slate-900/95 z-50 flex flex-col items-center justify-center p-6 text-center">
+                <h2 className="text-2xl font-black text-white mb-4">VERIFICACIÓN MANUAL</h2>
+                <p className="text-slate-300 mb-6">Pide al jugador que te lea los números.</p>
+                <button onClick={onClose} className="px-8 py-4 bg-blue-600 text-white font-bold rounded-xl">ENTENDIDO</button>
+            </div>
+        );
+
+        const Caller = ({ onBack }) => {
+            const [history, setHistory] = useState([]);
+            const [current, setCurrent] = useState(null);
+            const [auto, setAuto] = useState(false);
+            const [audioOn, setAudioOn] = useState(false);
+            const [scanning, setScanning] = useState(false);
+            const [manualCheck, setManualCheck] = useState(false);
+            const [verifiedResult, setVerifiedResult] = useState(null); 
+            const timerRef = useRef(null);
+
+            const playSound = (text) => {
+                if(!window.speechSynthesis) return;
+                try { const Ctx = window.AudioContext || window.webkitAudioContext; if(Ctx){const ctx=new Ctx();const o=ctx.createOscillator();o.connect(ctx.destination);o.start();o.stop(ctx.currentTime+0.01);} } catch(e){}
+                window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = 'es-ES'; u.rate = 1; window.speechSynthesis.speak(u);
+            };
+
+            const draw = () => {
+                if(history.length >= 90) return setAuto(false);
+                let n; do { n = Math.floor(Math.random()*90)+1; } while(history.includes(n));
+                setHistory(p => [n, ...p]); setCurrent(n); playSound(`${n}`);
+            };
+
+            useEffect(() => { if(auto && !scanning && !verifiedResult && !manualCheck) timerRef.current = setInterval(draw, 4000); else clearInterval(timerRef.current); return () => clearInterval(timerRef.current); }, [auto, scanning, verifiedResult, manualCheck]);
+
+            const verify = (cardsData) => {
+                let best = { type: null, card: -1 };
+                const hSet = new Set(history);
+                cardsData.forEach((grid, idx) => {
+                    let rows = 0; grid.forEach(row => { if(row.filter(n=>n).every(n=>hSet.has(n))) rows++; });
+                    const total = grid.flat().filter(n=>n).filter(n=>hSet.has(n)).length;
+                    if(total===15) best = { type: 'BINGO', card: idx+1 };
+                    else if(rows>0 && !best.type) best = { type: 'LÍNEA', card: idx+1 };
+                });
+                if(best.type) { setVerifiedResult({ ok: true, title: `¡${best.type} CORRECTO!`, sub: `En el cartón ${best.card}` }); confetti(); playSound(`¡${best.type} Correcto!`); } 
+                else { setVerifiedResult({ ok: false, title: "❌ INCORRECTO", sub: "Faltan números" }); playSound("Incorrecto"); }
+                setScanning(false);
+            };
+
+            const ResultModal = () => (
+                <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+                    <div className={`p-6 rounded-2xl w-full max-w-md ${verifiedResult.ok?'bg-green-600':'bg-red-600'}`}><h2 className="text-3xl font-black text-white mb-2">{verifiedResult.title}</h2><p className="text-white/80 text-xl font-bold">{verifiedResult.sub}</p></div>
+                    <button onClick={()=>setVerifiedResult(null)} className="mt-8 px-8 py-4 bg-white text-black font-black rounded-xl text-xl shadow-xl">CONTINUAR</button>
+                </div>
+            );
+
+            if(!audioOn) return (
+                <div className="flex flex-col items-center justify-center h-full bg-slate-900 p-6 text-center fade-in">
+                    <div className="mb-6 text-pink-500 animate-bounce"><Icon name="volume"/></div><h1 className="text-3xl font-black mb-4">MODO TV / BOMBO</h1>
+                    <button onClick={()=>{setAudioOn(true); playSound("Conectado")}} className="w-full max-w-md py-5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-bold text-xl shadow-lg">CONECTAR SONIDO</button>
+                    <button onClick={onBack} className="mt-6 text-slate-500 underline">Volver</button>
+                </div>
+            );
+
+            return (
+                <div className="flex flex-col md:flex-row h-full bg-slate-900 overflow-hidden">
+                    <div className="md:w-1/3 h-[40%] md:h-full flex flex-col items-center justify-center p-2 relative border-b md:border-r border-slate-700 shrink-0">
+                        <div className="absolute top-2 left-2 md:hidden z-20"><button onClick={()=>{setAuto(false);onBack()}} className="p-2 bg-slate-800 rounded-full"><Icon name="arrowLeft"/></button></div>
+                        <div className="absolute top-2 right-2 md:hidden bg-slate-800 px-3 py-1 rounded-full text-blue-300 font-bold z-20">{history.length}/90</div>
+                        <div onClick={()=>current && playSound(`${current}`)} className="w-[30vh] h-[30vh] md:w-[35vw] md:h-[35vw] max-w-[300px] max-h-[300px] md:max-w-[400px] md:max-h-[400px] bg-slate-800 rounded-full border-[8px] md:border-[16px] border-slate-700 flex items-center justify-center shadow-2xl cursor-pointer active:scale-95 transition-transform shrink-0"><span className="text-[6rem] md:text-[10rem] lg:text-[12rem] font-black leading-none">{current || "--"}</span></div>
+                        <div className="mt-2 text-slate-500 text-sm md:text-xl font-bold shrink-0">ÚLTIMO NÚMERO</div>
+                    </div>
+                    <div className="md:w-2/3 h-[60%] md:h-full flex flex-col bg-slate-950 p-2 md:p-4 min-h-0">
+                        <div className="hidden md:flex justify-between items-center mb-4 shrink-0"><h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">PANEL DE CONTROL</h2><div className="flex gap-4"><button onClick={()=>{setAuto(false);onBack()}} className="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 font-bold">SALIR</button><button onClick={()=>{if(confirm("Reiniciar?")){setHistory([]);setCurrent(null);setAuto(false)}}} className="px-4 py-2 bg-red-900/50 text-red-400 rounded-lg hover:bg-red-900 font-bold">REINICIAR</button></div></div>
+                        <div className="flex-1 min-h-0 bg-slate-900 rounded-2xl p-2 border border-slate-800 shadow-inner overflow-y-auto scroller"><div className="grid grid-cols-10 gap-1 content-start">{Array.from({length:90},(_,i)=>i+1).map(n=><div key={n} className={`aspect-square md:aspect-auto md:h-12 flex items-center justify-center rounded font-bold text-xs sm:text-sm md:text-lg transition-all duration-300 ${history.includes(n)?'bg-green-500 text-white shadow-[0_0_10px_rgba(34,197,94,0.5)]':'bg-slate-800 text-slate-600'}`}>{n}</div>)}</div></div>
+                        <div className="mt-2 flex gap-2 h-14 md:h-20 shrink-0">
+                            <button onClick={()=>setAuto(!auto)} className={`flex-1 md:flex-none px-2 md:px-6 py-2 md:py-3 rounded-xl font-black text-xs md:text-xl flex items-center justify-center gap-2 transition-all h-full ${auto?'bg-amber-500 text-black shadow-[0_0_20px_rgba(245,158,11,0.4)]':'bg-slate-700 hover:bg-slate-600'}`}>{auto ? <><Icon name="pause" size={16}/> PAUSA</> : <><Icon name="play" size={16}/> AUTO</>}</button>
+                            <button onClick={draw} disabled={auto} className="flex-[2] md:flex-none px-4 md:px-6 py-2 md:py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-black text-sm md:text-xl shadow-lg active:translate-y-1 h-full">SACAR BOLA</button>
+                            <div className="flex flex-col gap-1 w-20 md:w-40 h-full"><button onClick={()=>{setAuto(false);setScanning(true)}} className="flex-1 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold text-[10px] md:text-sm flex items-center justify-center gap-1 shadow-lg"><Icon name="camera"/> ESCANEAR</button><button onClick={()=>{setAuto(false);setManualCheck(true)}} className="flex-1 bg-slate-700 hover:bg-slate-600 rounded-xl font-bold text-[10px] md:text-sm flex items-center justify-center gap-1"><Icon name="eye"/> MANUAL</button></div>
+                        </div>
+                    </div>
+                    {scanning && <AdminScanner onVerify={verify} onClose={()=>setScanning(false)}/>}
+                    {manualCheck && <ManualVerifyModal onClose={()=>setManualCheck(false)}/>}
+                    {verifiedResult && <ResultModal/>}
+                </div>
+            );
+        };
+
+        const Menu = ({ setMode }) => (
+            <div className="flex flex-col items-center justify-center h-full bg-gradient-to-b from-blue-900 to-slate-900 p-4 text-center scroller">
+                <h1 className="text-7xl sm:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-indigo-500 mb-8 drop-shadow-2xl shrink-0">BINGO</h1>
+                <div className="flex flex-col sm:flex-row gap-6 w-full max-w-4xl justify-center shrink-0">
+                    <button onClick={()=>setMode('player')} className="flex-1 p-8 bg-slate-800 rounded-3xl border-2 border-slate-700 hover:border-pink-500 transition-all hover:-translate-y-2 shadow-2xl group"><div className="bg-pink-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icon name="finger"/></div><h2 className="text-2xl font-black mb-2">SOY JUGADOR</h2><p className="text-slate-400">Cartón + QR</p></button>
+                    <button onClick={()=>setMode('caller')} className="flex-1 p-8 bg-slate-800 rounded-3xl border-2 border-slate-700 hover:border-blue-500 transition-all hover:-translate-y-2 shadow-2xl group"><div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icon name="tv"/></div><h2 className="text-2xl font-black mb-2">MODO TV</h2><p className="text-slate-400">Bombo + Escáner</p></button>
+                </div>
+                
+                {/* PIE DE PÁGINA ACTUALIZADO */}
+                <div className="mt-12 flex flex-col items-center gap-2 text-slate-500 text-sm shrink-0 opacity-80 hover:opacity-100 transition-opacity">
+                    <p>Creado por <span className="font-bold text-slate-400">Raúl Rubio</span></p>
+                    <a href="http://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
+                        <img alt="Licencia Creative Commons" style={{borderWidth:0}} src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" />
+                    </a>
+                </div>
+            </div>
+        );
+
+        const App = () => {
+            const [mode, setMode] = useState('menu');
+            return mode === 'menu' ? <Menu setMode={setMode}/> : mode === 'player' ? <Player onBack={()=>setMode('menu')}/> : <Caller onBack={()=>setMode('menu')}/>;
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+        // --- CONFIGURACIÓN PWA (COPIAR Y PEGAR) ---
+const PWA_CONFIG = {
+    name: "BingoPacorros", // 🔴 CAMBIA ESTO
+    short_name: "BingoPacorros",      // 🔴 CAMBIA ESTO (Nombre bajo el icono)
+    iconUrl: "https://raw.githubusercontent.com/DRG-GEM/bingopacorros/main/BingoDRG.png", // 🔴 CAMBIA ESTO (Enlace directo a imagen cuadrada)
+    themeColor: "#0f172a",    // 🔴 CAMBIA ESTO (Mismo color que arriba)
+    backgroundColor: "#0f172a"
+};
+
+// 1. Generar Manifiesto Dinámico
+const manifest = {
+    name: "BingoPacorros",
+    short_name: "BingoPacorros",
+    start_url: window.location.href,
+    display: "standalone",
+    background_color: #0f172a,
+    theme_color: #0f172a,
+    icons: [
+        { src: iconUrl, sizes: "192x192", type: "image/png" },
+        { src: iconUrl, sizes: "512x512", type: "image/png" }
+    ]
+};
+const stringManifest = JSON.stringify(manifest);
+const blob = new Blob([stringManifest], {type: 'application/json'});
+const manifestURL = URL.createObjectURL(blob);
+document.getElementById('manifest-placeholder').setAttribute('href', manifestURL);
+
+// 2. Registrar Service Worker (Obligatorio para instalar)
+if ('serviceWorker' in navigator) {
+    const swContent = `
+        self.addEventListener('install', (e) => e.waitUntil(self.skipWaiting()));
+        self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+        self.addEventListener('fetch', (e) => {});
+    `;
+    const swBlob = new Blob([swContent], {type: 'text/javascript'});
+    const swUrl = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swUrl).catch(console.error);
+}
+    </script>
+    
+</body>
+</html>
